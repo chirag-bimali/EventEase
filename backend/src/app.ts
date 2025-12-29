@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import type { Request, Response } from "express";
 
 import { authRouter } from "./routes/auth.routes.js";
+import { roleRouter } from "./routes/role.routes.js";
 
 
 // create an express application
@@ -15,6 +16,7 @@ app.use(express.json());
 
 // use routes
 app.use("/auth", authRouter);
+app.use("/roles", roleRouter);
 
 // define a simple route
 app.get("/", (req: Request, res: Response) => {
