@@ -21,6 +21,8 @@ model User {
   roles     UserRole[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+  events    Event[]   @relation("UserEvents")
+  tickets   Ticket[]  @relation("UserTickets")
 }
 
 model Role {
@@ -38,4 +40,76 @@ model UserRole {
   role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@id([userId, roleId])
+}
+
+model Event {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String   @db.Text
+  startTime   DateTime
+  endTime     DateTime
+  imageUrl    String? @db.Text
+  venue       String
+  status      EventStatus @default(UPCOMING)
+  createdById Int
+  createdBy   User     @relation("UserEvents", fields: [createdById], references: [id])
+  ticketGroups TicketGroup[] @relation("EventTicketGroups")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+
+model TicketGroup {
+  id          Int      @id @default(autoincrement())
+  eventId     Int
+  event       Event    @relation("EventTicketGroups", fields: [eventId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  seatType    SeatType
+  // For QUEUE type
+  prefixFormat String? // e.g., "B" for B1, B2, B3...
+  quantity    Int?     @default(0)
+  // For SEAT type - Store complete seating configuration as JSON
+  // Example: [{"row": "A", "columns": 8}, {"row": "B", "columns": 10}, {"row": "C", "columns": 12}]
+  seatingConfig String? @db.Text
+  totalSeats  Int?
+  tickets     Ticket[] @relation("TicketGroupTickets")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+
+
+model Ticket {
+  id            Int      @id @default(autoincrement())
+  ticketGroupId Int
+  ticketGroup   TicketGroup @relation("TicketGroupTickets",fields: [ticketGroupId], references: [id], onDelete: Cascade)
+  seatNumber    String   // For SEAT: "A1", "B5", For QUEUE: "B1", "B2"
+  status        TicketStatus @default(AVAILABLE)
+  purchasedById Int?
+  purchasedBy   User?    @relation("UserTickets", fields: [purchasedById], references: [id])
+  purchasedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([ticketGroupId, seatNumber])
+}
+
+enum EventStatus {
+  UPCOMING
+  AVAILABLE
+  SOLD
+}
+
+enum SeatType {
+  GENERAL
+  QUEUE
+  SEAT
+}
+
+enum TicketStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
 }
