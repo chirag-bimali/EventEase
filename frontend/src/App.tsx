@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
+import { EventsPage } from './pages/EventPage';
 
 function App() {
   return (
@@ -27,7 +28,7 @@ function App() {
             path="/events"
             element={
               <ProtectedRoute>
-                <div>Events Page</div>
+                <EventsPage />
               </ProtectedRoute>
             }
           />
