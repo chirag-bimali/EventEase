@@ -5,6 +5,7 @@ import type { Request, Response } from "express";
 
 import { authRouter } from "./routes/auth.routes.js";
 import { roleRouter } from "./routes/role.routes.js";
+import { eventRouter } from "./routes/event.routes.js";
 
 
 // create an express application
@@ -15,8 +16,9 @@ app.use(cors());
 app.use(express.json());
 
 // use routes
-app.use("/auth", authRouter);
-app.use("/roles", roleRouter);
+app.use("/api/auth", authRouter);
+app.use("/api/roles", roleRouter);
+app.use("/api/events", eventRouter);
 
 // define a simple route
 app.get("/", (req: Request, res: Response) => {
