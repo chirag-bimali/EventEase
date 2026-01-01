@@ -1,10 +1,11 @@
 import type { Request, Response, NextFunction } from "express";
+import type { MulterRequest } from "../middlewares/upload.middleware.js";
 import { eventService } from "../services/event.service.js";
 import {
   createEventSchema,
   updateEventSchema,
-  createTicketGroupSchema,
 } from "../schemas/event.schema.js";
+import { parse } from "path";
 
 export const createEvent = async (
   req: Request,
@@ -23,7 +24,6 @@ export const createEvent = async (
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-
     const event = await eventService.createEvent(parsed.data, userId);
     return res.status(201).json(event);
   } catch (error) {
@@ -90,9 +90,16 @@ export const updateEvent = async (
         .json({ message: "Invalid event data", errors: parsed.error.issues });
     }
 
+    // const event = await eventService.getEventById(id);
     const event = await eventService.updateEvent(id, parsed.data);
     return res.json(event);
   } catch (error) {
+    // If the error is due to business logic (e.g., event not found), it should be handled in the service
+    // send a generic error message otherwise
+    if (error instanceof Error) {
+      return res.status(400).json({ message: error.message });
+    }
+
     next(error);
   }
 };
@@ -119,65 +126,19 @@ export const deleteEvent = async (
   }
 };
 
-// Ticket Group Controllers
-export const createTicketGroup = async (
-  req: Request,
+export const uploadEventImage = async (
+  req: MulterRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const parsed = createTicketGroupSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({
-        message: "Invalid ticket group data",
-        errors: parsed.error.issues,
-      });
+    if (!req.file) {
+      return res.status(400).json({ message: "No image file provided" });
     }
 
-    const ticketGroup = await eventService.createTicketGroup(parsed.data);
-    return res.status(201).json(ticketGroup);
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getTicketGroupsByEvent = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    if (!req.params.eventId) {
-      return res.status(400).json({ message: "Event ID is required" });
-    }
-    const eventId = parseInt(req.params.eventId);
-    if (isNaN(eventId)) {
-      return res.status(400).json({ message: "Invalid event ID" });
-    }
-
-    const ticketGroups = await eventService.getTicketGroupsByEvent(eventId);
-    return res.json(ticketGroups);
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const deleteTicketGroup = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    if (!req.params.id) {
-      return res.status(400).json({ message: "Ticket group ID is required" });
-    }
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid ticket group ID" });
-    }
-
-    await eventService.deleteTicketGroup(id);
-    return res.status(204).send();
+    // Return the URL path to access the uploaded image
+    const imageUrl = `/uploads/${req.file.filename}`;
+    return res.json({ imageUrl });
   } catch (error) {
     next(error);
   }
