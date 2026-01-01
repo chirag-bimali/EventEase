@@ -2,9 +2,10 @@ import axiosInstance from "../lib/axios";
 import type {
   Event,
   CreateEventDTO,
-  CreateTicketGroupDTO,
-  TicketGroup,
+  UpdateEventDTO,
 } from "../types/event.types";
+
+import type { TicketGroup, CreateTicketGroupDTO } from "../types/ticketGroup.types";
 
 export const eventService = {
   async getAllEvents(): Promise<Event[]> {
@@ -24,9 +25,21 @@ export const eventService = {
 
   async updateEvent(
     id: number,
-    data: Partial<CreateEventDTO>
+    data: UpdateEventDTO
   ): Promise<Event> {
     const response = await axiosInstance.patch(`/events/${id}`, data);
+    return response.data;
+  },
+
+  async uploadEventImage(file: File): Promise<{ imageUrl: string }> {
+    const formData = new FormData();
+    formData.append("image", file);
+    
+    const response = await axiosInstance.post("/events/upload-image", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
     return response.data;
   },
 
