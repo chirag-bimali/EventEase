@@ -46,11 +46,11 @@ model Event {
   id          Int      @id @default(autoincrement())
   name        String
   description String   @db.Text
-  startTime   DateTime
-  endTime     DateTime
+  startTime   DateTime?
+  endTime     DateTime?
   imageUrl    String? @db.Text
   venue       String
-  status      EventStatus @default(UPCOMING)
+  status      EventStatus @default(DRAFT)
   createdById Int
   createdBy   User     @relation("UserEvents", fields: [createdById], references: [id])
   ticketGroups TicketGroup[] @relation("EventTicketGroups")
@@ -97,9 +97,10 @@ model Ticket {
 }
 
 enum EventStatus {
-  UPCOMING
-  AVAILABLE
-  SOLD
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  SOLD_OUT
 }
 
 enum SeatType {
