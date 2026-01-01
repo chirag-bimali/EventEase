@@ -1,36 +1,61 @@
-import { z } from 'zod';
+import z from "zod";
 
-export const createEventSchema = z.object({
-  name: z.string().min(1, "Event name is required"),
-  description: z.string().min(1, "Description is required"),
-  startTime: z.string().datetime(),
-  endTime: z.string().datetime(),
-  imageUrl: z.string().url().optional(),
-  venue: z.string().min(1, "Venue is required"),
-});
+// Transform empty strings to undefined for optional DateTime fields
+const optionalDateTime = z
+  .string()
+  .optional()
+  .transform((val) => (val === "" ? undefined : val));
 
-export const updateEventSchema = createEventSchema.partial();
+export const createEventSchema = z
+  .object({
+    name: z.string().min(1, "Event name is required"),
+    description: z.string().min(1, "Description is required"),
+    venue: z.string().min(1, "Venue is required"),
+    startTime: optionalDateTime,
+    endTime: optionalDateTime,
+    imageUrl: z.string().optional(),
+    status: z
+      .enum(["DRAFT", "PUBLISHED", "CANCELLED", "SOLD_OUT"])
+      .optional()
+      .default("DRAFT"),
+  })
+  .refine(
+    (data) => {
+      // If both times are provided, endTime must be after startTime
+      if (data.startTime && data.endTime) {
+        return new Date(data.endTime) > new Date(data.startTime);
+      }
+      return true;
+    },
+    {
+      message: "End time must be after start time",
+      path: ["endTime"],
+    }
+  );
 
-// Seating configuration for dynamic rows/columns
-export const seatingRowSchema = z.object({
-  row: z.string().min(1).max(5), // e.g., "A", "B", "VIP1"
-  columns: z.number().int().positive().max(100), // Number of seats in this row
-});
-
-export const createTicketGroupSchema = z.object({
-  eventId: z.number().int().positive(),
-  name: z.string().min(1, "Group name is required"),
-  description: z.string().optional(),
-  price: z.number().nonnegative(),
-  seatType: z.enum(['GENERAL', 'QUEUE', 'SEAT']),
-  // For QUEUE type
-  prefixFormat: z.string().optional(),
-  quantity: z.number().int().positive().optional(),
-  // For SEAT type - Array of row configurations
-  seatingConfig: z.array(seatingRowSchema).optional(),
-});
+export const updateEventSchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    description: z.string().min(1).optional(),
+    venue: z.string().min(1).optional(),
+    startTime: optionalDateTime,
+    endTime: optionalDateTime,
+    imageUrl: z.string().optional(),
+    status: z.enum(["DRAFT", "PUBLISHED", "CANCELLED", "SOLD_OUT"]).optional(),
+  })
+  .refine(
+    (data) => {
+      // If both times are provided, endTime must be after startTime
+      if (data.startTime && data.endTime) {
+        return new Date(data.endTime) > new Date(data.startTime);
+      }
+      return true;
+    },
+    {
+      message: "End time must be after start time",
+      path: ["endTime"],
+    }
+  );
 
 export type CreateEventDTO = z.infer<typeof createEventSchema>;
 export type UpdateEventDTO = z.infer<typeof updateEventSchema>;
-export type SeatingRow = z.infer<typeof seatingRowSchema>;
-export type CreateTicketGroupDTO = z.infer<typeof createTicketGroupSchema>;
