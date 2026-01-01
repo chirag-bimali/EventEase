@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
+import type { Role } from "./role.types";
 
 export interface User {
   id: number;
   username: string;
+  role?: Role;
 }
 
 export interface AuthContextType {
