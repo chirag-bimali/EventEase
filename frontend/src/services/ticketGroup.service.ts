@@ -18,7 +18,7 @@ export const ticketGroupService = {
     const payload = {
       ...data,
       seatingConfig: data.seatType === "SEAT" ? data.seatingConfig : undefined,
-      prefixFormat: data.seatType === "QUEUE" ? data.prefixFormat : undefined,
+      prefixFormat: data.seatType !== "SEAT" ? data.prefixFormat : undefined,
     };
     const response = await axiosInstance.post("/ticket-groups", payload);
     return response.data;

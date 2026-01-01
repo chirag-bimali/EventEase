@@ -31,7 +31,8 @@ export const TicketGroupModal = ({
   // Normalize seating config from possible string payloads
   const initialSeatingConfig: SeatingConfig[] = useMemo(() => {
     if (!ticketGroup?.seatingConfig) return [];
-    if (Array.isArray(ticketGroup.seatingConfig)) return ticketGroup.seatingConfig as SeatingConfig[];
+    if (Array.isArray(ticketGroup.seatingConfig))
+      return ticketGroup.seatingConfig as SeatingConfig[];
     try {
       const parsed = JSON.parse(ticketGroup.seatingConfig as string);
       return Array.isArray(parsed) ? (parsed as SeatingConfig[]) : [];
@@ -48,7 +49,8 @@ export const TicketGroupModal = ({
     quantity: ticketGroup?.quantity !== undefined ? ticketGroup.quantity : "",
     prefixFormat: ticketGroup?.prefixFormat || "",
   }));
-  const [seatingRows, setSeatingRows] = useState<SeatingConfig[]>(initialSeatingConfig);
+  const [seatingRows, setSeatingRows] =
+    useState<SeatingConfig[]>(initialSeatingConfig);
   const [error, setError] = useState<string | null>(null);
 
   const totalSeats = useMemo(
@@ -68,7 +70,7 @@ export const TicketGroupModal = ({
       setFormData((prev) => ({
         ...prev,
         seatType: nextType,
-        prefixFormat: nextType === "QUEUE" ? prev.prefixFormat : "",
+        prefixFormat: nextType === "SEAT" ? "" : prev.prefixFormat,
       }));
     } else {
       setFormData((prev) => ({
@@ -142,8 +144,17 @@ export const TicketGroupModal = ({
         }
       }
 
-      const seatingConfigPayload = formData.seatType === "SEAT" ? seatingRows : undefined;
-      const prefixPayload = formData.seatType === "QUEUE" ? formData.prefixFormat : undefined;
+      if (formData.seatType === "QUEUE" || formData.seatType === "GENERAL") {
+        if (!formData.prefixFormat?.trim()) {
+          setError("Prefix format is required for QUEUE and GENERAL types");
+          return;
+        }
+      }
+
+      const seatingConfigPayload =
+        formData.seatType === "SEAT" ? seatingRows : undefined;
+      const prefixPayload =
+        formData.seatType !== "SEAT" ? formData.prefixFormat : undefined; // Changed condition
       const basePayload = {
         name: formData.name,
         description: formData.description,
@@ -264,7 +275,8 @@ export const TicketGroupModal = ({
             />
           </div>
 
-          {formData.seatType === "QUEUE" && (
+          {(formData.seatType === "QUEUE" ||
+            formData.seatType === "GENERAL") && (
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Prefix Format (for Queue)
@@ -284,7 +296,9 @@ export const TicketGroupModal = ({
           {formData.seatType === "SEAT" && (
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-700">Seating Configuration</h3>
+                <h3 className="text-sm font-medium text-gray-700">
+                  Seating Configuration
+                </h3>
                 <button
                   type="button"
                   onClick={addRow}
@@ -307,7 +321,9 @@ export const TicketGroupModal = ({
                       <input
                         type="text"
                         value={row.row}
-                        onChange={(e) => updateRow(index, "row", e.target.value)}
+                        onChange={(e) =>
+                          updateRow(index, "row", e.target.value)
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                         placeholder="e.g., A"
                       />
@@ -320,7 +336,9 @@ export const TicketGroupModal = ({
                         type="number"
                         min={1}
                         value={row.columns}
-                        onChange={(e) => updateRow(index, "columns", Number(e.target.value))}
+                        onChange={(e) =>
+                          updateRow(index, "columns", Number(e.target.value))
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                         placeholder="e.g., 10"
                       />
