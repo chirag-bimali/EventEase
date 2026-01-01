@@ -17,5 +17,5 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 /src/generated/prisma
-
+/uploads
 /generated/prisma
