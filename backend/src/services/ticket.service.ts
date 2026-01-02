@@ -113,4 +113,46 @@ export const ticketService = {
 
     throw new Error("Invalid ticket type");
   },
+
+  async batchGenerateTickets(
+    ticketGroupId: number,
+    userId: number,
+    seatType: SeatType,
+    quantity?: number,
+    seatNumbers?: string[]
+  ) {
+    const ticketGroup = await prisma.ticketGroup.findUnique({
+      where: { id: ticketGroupId },
+      include: { tickets: true },
+    });
+    
+    if (!ticketGroup) {
+      throw new Error("Ticket group not found");
+    }
+    const createdTickets = [];
+
+    if (seatType === SeatType.SEAT) {
+      if (!seatNumbers || seatNumbers.length === 0) {
+        throw new Error("Seat numbers are required for SEAT type tickets");
+      }
+
+      for (const seatNumber of seatNumbers) {
+        const ticket = await this.generateTicket(ticketGroupId, userId, seatNumber);
+        createdTickets.push(ticket);
+      }
+    } else if (seatType === SeatType.QUEUE || seatType === SeatType.GENERAL) {
+      if (!quantity || quantity <= 0) {
+        throw new Error("Quantity must be a positive integer for QUEUE/GENERAL type tickets");
+      }
+
+      for (let i = 0; i < quantity; i++) {
+        const ticket = await this.generateTicket(ticketGroupId, userId);
+        createdTickets.push(ticket);
+      }
+    } else {
+      throw new Error("Invalid seat type");
+    }
+
+    return createdTickets;
+  }
 }
