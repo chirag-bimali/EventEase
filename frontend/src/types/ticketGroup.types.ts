@@ -74,3 +74,19 @@ export interface TicketGroupAvailability {
   sold: number;
   total: number; // -1 means unlimited
 }
+
+
+export interface SeatLayoutRow {
+  row: string;
+  seats: SeatInfo[];
+}
+
+export interface SeatInfo {
+  seatNumber: string;
+  status: "AVAILABLE" | "RESERVED" | "SOLD";
+}
+
+export interface SeatLayout {
+  ticketGroupId: number;
+  rows: SeatLayoutRow[];
+}
