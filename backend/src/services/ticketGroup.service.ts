@@ -1,9 +1,11 @@
 import { SeatType } from "../generated/prisma/index.js";
 import { prisma } from "../lib/primsa.js";
-import type { CreateTicketGroupDTO, SeatingRow } from "../schemas/ticketGroup.schema.js";
+import type {
+  CreateTicketGroupDTO,
+  SeatingRow,
+} from "../schemas/ticketGroup.schema.js";
 
 export const ticketGroupService = {
-
   // TICKET GROUP MANAGEMENT
   async createTicketGroup(data: CreateTicketGroupDTO) {
     const {
@@ -167,4 +169,66 @@ export const ticketGroupService = {
     };
   },
 
-}
+  async getSeatLayout(ticketGroupId: number) {
+    // Get ticket group with seating config
+    const ticketGroup = await prisma.ticketGroup.findUnique({
+      where: { id: ticketGroupId },
+      include: {
+        tickets: {
+          select: {
+            seatNumber: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    if (!ticketGroup) {
+      throw new Error("Ticket group not found");
+    }
+
+    // Only SEAT type groups have layouts
+    if (ticketGroup.seatType !== SeatType.SEAT) {
+      throw new Error("Only SEAT type ticket groups have seat layouts");
+    }
+
+    // Parse seatingConfig
+    if (!ticketGroup.seatingConfig) {
+      throw new Error("Seating configuration not found");
+    }
+
+    const seatingConfig = JSON.parse(ticketGroup.seatingConfig) as SeatingRow[];
+
+    // Create a map of seat status for quick lookup
+    const seatStatusMap = new Map<string, string>();
+    for (const ticket of ticketGroup.tickets) {
+      seatStatusMap.set(ticket.seatNumber, ticket.status);
+    }
+
+    // Build response with rows and seats
+    const rows = seatingConfig.map((rowConfig) => {
+      const seats = [];
+
+      // Generate seat numbers for each column in this row
+      for (let col = 1; col <= rowConfig.columns; col++) {
+        const seatNumber = `${rowConfig.row}${col}`;
+        const status = seatStatusMap.get(seatNumber) || "AVAILABLE";
+
+        seats.push({
+          number: seatNumber,
+          status,
+        });
+      }
+
+      return {
+        row: rowConfig.row,
+        seats,
+      };
+    });
+
+    return {
+      ticketGroupId,
+      rows,
+    };
+  },
+};
