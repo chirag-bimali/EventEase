@@ -1,11 +1,12 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/auth.provider';
-import ProtectedRoute from './components/ProtectedRoute';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import DashboardPage from './pages/DashboardPage';
-import { EventsPage } from './pages/EventPage';
-import { EventDetailPage } from './pages/EventDetailPage';
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "./contexts/auth.provider";
+import ProtectedRoute from "./components/ProtectedRoute";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import DashboardPage from "./pages/DashboardPage";
+import { EventsPage } from "./pages/EventPage";
+import { EventDetailPage } from "./pages/EventDetailPage";
+import { POSPage } from "./pages/POSPage";
 
 function App() {
   return (
@@ -53,7 +54,7 @@ function App() {
             path="/pos"
             element={
               <ProtectedRoute>
-                <div>POS Page</div>
+                <POSPage />
               </ProtectedRoute>
             }
           />
