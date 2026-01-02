@@ -1,4 +1,4 @@
-import { prisma } from "../lib/primsa.js";
+import { prisma } from "../lib/primsa.ts";
 
 export interface RoleDTO {
   id: number;

@@ -1,10 +1,10 @@
 import type { Request, Response, NextFunction } from "express";
-import type { MulterRequest } from "../middlewares/upload.middleware.js";
-import { eventService } from "../services/event.service.js";
+import type { MulterRequest } from "../middlewares/upload.middleware.ts";
+import { eventService } from "../services/event.service.ts";
 import {
   createEventSchema,
   updateEventSchema,
-} from "../schemas/event.schema.js";
+} from "../schemas/event.schema.ts";
 import { parse } from "path";
 
 export const createEvent = async (

@@ -1,8 +1,8 @@
-import { prisma } from "../lib/primsa.js";
+import { prisma } from "../lib/primsa.ts";
 import type {
   CreateEventDTO,
   UpdateEventDTO,
-} from "../schemas/event.schema.js";
+} from "../schemas/event.schema.ts";
 import { SeatType, TicketStatus } from "../generated/prisma/client.js";
 
 export const eventService = {

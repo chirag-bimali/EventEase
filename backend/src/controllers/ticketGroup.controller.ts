@@ -1,10 +1,9 @@
 import type { Request, Response, NextFunction } from "express";
-import * as ticketGroupService from "../services/ticketGroup.service.js";
+import * as ticketGroupService from "../services/ticketGroup.service.ts";
 import {
   createTicketGroupSchema,
   updateTicketGroupSchema
-} from "../schemas/ticketGroup.schema.js";
-
+} from "../schemas/ticketGroup.schema.ts";
 // Ticket Group Controllers
 export const createTicketGroup = async (
   req: Request,

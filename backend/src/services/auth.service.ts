@@ -1,6 +1,6 @@
 import crypto, { hash } from "crypto";
 import jwt from "jsonwebtoken";
-import { prisma } from "../lib/primsa.js";
+import { prisma } from "../lib/primsa.ts";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) throw new Error("Environment variable JWT_SECRET is not set.");

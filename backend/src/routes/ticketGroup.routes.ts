@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { createTicketGroup, deleteTicketGroup, getTicketGroupsByEvent, updateTicketGroup, getTicketGroupAvailability, getSeatLayout } from "../controllers/ticketGroup.controller.js";
-import { authMiddleware } from "../middlewares/auth.middleware.js";
+import { createTicketGroup, deleteTicketGroup, getTicketGroupsByEvent, updateTicketGroup, getTicketGroupAvailability, getSeatLayout } from "../controllers/ticketGroup.controller.ts";
+import { authMiddleware } from "../middlewares/auth.middleware.ts";
 
 export const ticketGroupRouter = Router();
 // Ticket group routes

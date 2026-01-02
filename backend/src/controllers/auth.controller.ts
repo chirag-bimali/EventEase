@@ -1,11 +1,11 @@
 import type { Request, Response, NextFunction } from "express";
-import { prisma } from "../lib/primsa.js";
+import { prisma } from "../lib/primsa.ts";
 import {
   hashPassword,
   verifyPassword,
   generateJWT,
-} from "../services/auth.service.js";
-import { createUserSchema, loginUserSchema } from "../schemas/user.schema.js";
+} from "../services/auth.service.ts";
+import { createUserSchema, loginUserSchema } from "../schemas/user.schema.ts";
 
 // Store passwords as "salt:hash" so we can verify with the scrypt helper.
 

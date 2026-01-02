@@ -1,9 +1,9 @@
 import { SeatType } from "../generated/prisma/index.js";
-import { prisma } from "../lib/primsa.js";
+import { prisma } from "../lib/primsa.ts";
 import type {
   CreateTicketGroupDTO,
   SeatingRow,
-} from "../schemas/ticketGroup.schema.js";
+} from "../schemas/ticketGroup.schema.ts";
 
 export const ticketGroupService = {
   // TICKET GROUP MANAGEMENT

@@ -3,13 +3,13 @@ import cors from "cors";
 import dotenv from "dotenv";
 import type { Request, Response } from "express";
 
-import { authRouter } from "./routes/auth.routes.js";
-import { roleRouter } from "./routes/role.routes.js";
-import { eventRouter } from "./routes/event.routes.js";
-import { ticketGroupRouter } from "./routes/ticketGroup.routes.js";
-import { ticketRouter } from "./routes/ticket.routes.js";
-import { seatHoldRouter } from "./routes/seatHold.routes.js";
-import { posOrderRouter } from "./routes/posOrder.routes.js";
+import { authRouter } from "./routes/auth.routes.ts";
+import { roleRouter } from "./routes/role.routes.ts";
+import { eventRouter } from "./routes/event.routes.ts";
+import { ticketGroupRouter } from "./routes/ticketGroup.routes.ts";
+import { ticketRouter } from "./routes/ticket.routes.ts";
+import { seatHoldRouter } from "./routes/seatHold.routes.ts";
+import { posOrderRouter } from "./routes/posOrder.routes.ts";
 
 
 // create an express application

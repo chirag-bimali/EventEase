@@ -1,5 +1,5 @@
 import { SeatType, TicketStatus } from "../generated/prisma/index.js";
-import { prisma } from "../lib/primsa.js";
+import { prisma } from "../lib/primsa.ts";
 
 export const ticketService = {
 

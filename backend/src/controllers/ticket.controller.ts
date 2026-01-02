@@ -1,7 +1,7 @@
 
 import type { Request, Response, NextFunction } from "express";
-import { ticketService } from "../services/ticket.service.js";
-import { generateTicketSchema, batchGenerateTicketsSchema } from "../schemas/ticket.schema.js";
+import { ticketService } from "../services/ticket.service.ts";
+import { generateTicketSchema, batchGenerateTicketsSchema } from "../schemas/ticket.schema.ts";
 
 
 // Ticket Generation Controller

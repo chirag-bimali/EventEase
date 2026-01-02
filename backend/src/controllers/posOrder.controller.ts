@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
-import { posOrderService } from "../services/posOrder.service.js";
-import { createPosOrderSchema } from "../schemas/posOrder.schema.js";
+import { posOrderService } from "../services/posOrder.service.ts";
+import { createPosOrderSchema } from "../schemas/posOrder.schema.ts";
 
 export const createPosOrder = async (
   req: Request,

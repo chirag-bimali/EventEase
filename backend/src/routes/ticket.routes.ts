@@ -1,8 +1,8 @@
 
 // import router
 import { Router } from "express";
-import { authMiddleware } from "../middlewares/auth.middleware.js";
-import { generateTicket } from "../controllers/ticket.controller.js";
+import { authMiddleware } from "../middlewares/auth.middleware.ts";
+import { generateTicket } from "../controllers/ticket.controller.ts";
 
 export const ticketRouter = Router();
 

@@ -6,9 +6,9 @@ import {
   updateEvent,
   deleteEvent,
   uploadEventImage,
-} from "../controllers/event.controller.js";
-import { authMiddleware } from "../middlewares/auth.middleware.js";
-import { upload } from "../middlewares/upload.middleware.js";
+} from "../controllers/event.controller.ts";
+import { authMiddleware } from "../middlewares/auth.middleware.ts";
+import { upload } from "../middlewares/upload.middleware.ts";
 
 export const eventRouter = Router();
 

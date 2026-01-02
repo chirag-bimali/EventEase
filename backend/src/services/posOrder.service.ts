@@ -1,6 +1,6 @@
-import type { CreatePosOrderDTO } from "../schemas/posOrder.schema.js";
-import { prisma } from "../lib/primsa.js";
-import { ticketService } from "./ticket.service.js";
+import type { CreatePosOrderDTO } from "../schemas/posOrder.schema.ts";
+import { prisma } from "../lib/primsa.ts";
+import { ticketService } from "./ticket.service.ts";
 
 // Generate unique order number: ORD-2026-0001
 const generateOrderNumber = async (): Promise<string> => {

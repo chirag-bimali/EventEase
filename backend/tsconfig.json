@@ -37,11 +37,21 @@
     // Recommended Options
     "strict": true,
     "jsx": "react-jsx",
-    "verbatimModuleSyntax": true,
+    "verbatimModuleSyntax": false,
     "isolatedModules": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
     "ignoreDeprecations": "6.0"
+  },
+  "ts-node": {
+    "esm": true,
+    "experimentalEsm": true,
+    "transpileOnly": true,
+    "moduleTypes": {
+      "**/*": "esm"
+    }
   }
 }

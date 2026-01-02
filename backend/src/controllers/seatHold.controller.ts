@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
-import { seatHoldService } from "../services/seatHold.service.js";
-import { createSeatHoldSchema } from "../schemas/seatHold.schema.js";
+import { seatHoldService } from "../services/seatHold.service.ts";
+import { createSeatHoldSchema } from "../schemas/seatHold.schema.ts";
 
 export const createSeatHolds = async (
   req: Request,
