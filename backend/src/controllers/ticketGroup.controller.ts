@@ -120,3 +120,24 @@ export const getTicketGroupAvailability = async (
     next(error);
   }
 };
+
+export const getSeatLayout = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.params.id) {
+      return res.status(400).json({ message: "Ticket group ID is required" });
+    }
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid ticket group ID" });
+    }
+
+    const layout = await ticketGroupService.ticketGroupService.getSeatLayout(id);
+    return res.json(layout);
+  } catch (error) {
+    next(error);
+  }
+};
