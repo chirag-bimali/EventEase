@@ -1,7 +1,7 @@
 
 import type { Request, Response, NextFunction } from "express";
 import { ticketService } from "../services/ticket.service.js";
-import { generateTicketSchema } from "../schemas/ticket.schema.js";
+import { generateTicketSchema, batchGenerateTicketsSchema } from "../schemas/ticket.schema.js";
 
 
 // Ticket Generation Controller
@@ -36,6 +36,47 @@ export const generateTicket = async (
       error.message.includes("not found") ||
       error.message.includes("not available") ||
       error.message.includes("sold")
+    ) {
+      return res.status(400).json({ message: error.message });
+    }
+    next(error);
+  }
+};
+
+export const batchGenerateTickets = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const parsed = batchGenerateTicketsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Invalid batch ticket generation data",
+        errors: parsed.error.issues,
+      });
+    }
+
+    const userId = (req as any).user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const tickets = await ticketService.batchGenerateTickets(
+      parsed.data.ticketGroupId,
+      userId,
+      parsed.data.seatType,
+      parsed.data.quantity,
+      parsed.data.seatNumbers
+    );
+
+    return res.status(201).json(tickets);
+  } catch (error: any) {
+    if (
+      error.message.includes("not found") ||
+      error.message.includes("not available") ||
+      error.message.includes("sold") ||
+      error.message.includes("limit")
     ) {
       return res.status(400).json({ message: error.message });
     }
