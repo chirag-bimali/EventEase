@@ -2,7 +2,6 @@ import { SeatType, TicketStatus } from "../generated/prisma/index.js";
 import { prisma } from "../lib/primsa.ts";
 
 export const ticketService = {
-
   // TICKET GENERATION
   async generateTicket(
     ticketGroupId: number,
@@ -26,11 +25,16 @@ export const ticketService = {
 
       // Parse seating configuration to validate seat existence
       const seatingConfig = ticketGroup.seatingConfig
-        ? (JSON.parse(ticketGroup.seatingConfig) as { row: string; columns: number }[])
+        ? (JSON.parse(ticketGroup.seatingConfig) as {
+            row: string;
+            columns: number;
+          }[])
         : [];
 
       if (!seatingConfig.length) {
-        throw new Error("Seating configuration not available for this ticket group");
+        throw new Error(
+          "Seating configuration not available for this ticket group"
+        );
       }
 
       // Build a quick lookup of valid seats
@@ -58,20 +62,32 @@ export const ticketService = {
         throw new Error("Seat already taken");
       }
 
-      return await prisma.ticket.create({
-        data: {
+      const seatHold = await prisma.seatHold.findFirst({
+        where: { ticketGroupId, seatNumber },
+      });
+
+      if (seatHold && seatHold.heldBy !== userId) {
+        throw new Error("Seat is currently held by another user");
+      }
+
+      const ticket = await prisma.ticket.upsert({
+        where: { ticketGroupId_seatNumber: { ticketGroupId, seatNumber } },
+        create: {
           ticketGroupId,
           seatNumber,
           status: TicketStatus.SOLD,
           purchasedById: userId,
           purchasedAt: new Date(),
         },
-        include: {
-          ticketGroup: {
-            include: { event: true },
-          },
+        update: {
+          status: TicketStatus.SOLD,
+          purchasedById: userId,
+          purchasedAt: new Date(),
         },
+        include: { ticketGroup: { include: { event: true } } },
       });
+
+      return ticket;
     }
 
     // For QUEUE or GENERAL type - generate ticket dynamically
@@ -125,7 +141,7 @@ export const ticketService = {
       where: { id: ticketGroupId },
       include: { tickets: true },
     });
-    
+
     if (!ticketGroup) {
       throw new Error("Ticket group not found");
     }
@@ -137,12 +153,18 @@ export const ticketService = {
       }
 
       for (const seatNumber of seatNumbers) {
-        const ticket = await this.generateTicket(ticketGroupId, userId, seatNumber);
+        const ticket = await this.generateTicket(
+          ticketGroupId,
+          userId,
+          seatNumber
+        );
         createdTickets.push(ticket);
       }
     } else if (seatType === SeatType.QUEUE || seatType === SeatType.GENERAL) {
       if (!quantity || quantity <= 0) {
-        throw new Error("Quantity must be a positive integer for QUEUE/GENERAL type tickets");
+        throw new Error(
+          "Quantity must be a positive integer for QUEUE/GENERAL type tickets"
+        );
       }
 
       for (let i = 0; i < quantity; i++) {
@@ -154,5 +176,5 @@ export const ticketService = {
     }
 
     return createdTickets;
-  }
-}
+  },
+};
