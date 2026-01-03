@@ -6,11 +6,11 @@ import { ticketService } from "./ticket.service.ts";
 const generateOrderNumber = async (): Promise<string> => {
   const today = new Date();
   const year = today.getFullYear();
-  
+
   // Count orders created today
   const todayStart = new Date(year, today.getMonth(), today.getDate());
   const todayEnd = new Date(year, today.getMonth(), today.getDate() + 1);
-  
+
   const count = await prisma.posOrder.count({
     where: {
       createdAt: {
@@ -19,23 +19,19 @@ const generateOrderNumber = async (): Promise<string> => {
       },
     },
   });
-  
   const sequence = String(count + 1).padStart(4, "0");
-  return `ORD-${year}-${sequence}`;
+  return `ORD-${year}-${today.getMonth() + 1}-${today.getDate()}-${sequence}`;
 };
 
 export const posOrderService = {
   async createOrder(data: CreatePosOrderDTO, createdById: number) {
-    // Generate unique orderNumber
     const orderNumber = await generateOrderNumber();
-    
-    let totalAmount = 0;
-    const createdItems = [];
-    const allTickets = [];
 
-    // For each item: batch generate tickets, calculate subtotal, create PosOrderItem
+    let totalAmount = 0;
+    const orderItemsData = [];
+
+    // First: Generate all tickets and prepare order item data
     for (const item of data.items) {
-      // Batch generate tickets for this group
       const tickets = await ticketService.batchGenerateTickets(
         item.ticketGroupId,
         createdById,
@@ -50,45 +46,24 @@ export const posOrderService = {
         );
       }
 
-      // Calculate subtotal for this item
-      const subtotal = parseFloat(
-        (item.unitPrice * tickets.length).toFixed(2)
-      );
+      const subtotal = parseFloat((item.unitPrice * tickets.length).toFixed(2));
       totalAmount += subtotal;
 
-      // Create PosOrderItem record
-      const orderItem = await prisma.posOrderItem.create({
-        data: {
-          quantity: tickets.length,
-          unitPrice: item.unitPrice,
-          subtotal,
-          ticketGroupId: item.ticketGroupId,
-          orderId: 0,
-        },
+      // Prepare data for nested create
+      orderItemsData.push({
+        quantity: tickets.length,
+        unitPrice: item.unitPrice,
+        subtotal,
+        ticketGroupId: item.ticketGroupId,
+        // Store ticket IDs to link later
+        ticketIds: tickets.map((t) => t.id),
       });
-
-      // Link tickets to this order item
-      await prisma.ticket.updateMany({
-        where: {
-          id: { in: tickets.map((t) => t.id) },
-        },
-        data: {
-          orderItemId: orderItem.id,
-          status: "SOLD",
-        },
-      });
-
-      createdItems.push(orderItem);
-      allTickets.push(...tickets);
     }
 
-    // Determine payment status based on payment method
-    const paymentStatus =
-      data.paymentMethod === "CASH" ? "PAID" : "PENDING";
-    const paidAt =
-      data.paymentMethod === "CASH" ? new Date() : null;
+    const paymentStatus = data.paymentMethod === "CASH" ? "PAID" : "PENDING";
+    const paidAt = data.paymentMethod === "CASH" ? new Date() : null;
 
-    // Create PosOrder
+    // Create order with nested items in ONE transaction
     const order = await prisma.posOrder.create({
       data: {
         orderNumber,
@@ -103,20 +78,42 @@ export const posOrderService = {
         buyerPhone: data.buyerPhone || null,
         buyerEmail: data.buyerEmail || null,
         notes: data.notes || null,
+        items: {
+          create: orderItemsData.map(({ ticketIds, ...itemData }) => itemData),
+        },
+      },
+      include: {
+        items: true,
       },
     });
 
-    // Link order items to the order
-    await prisma.posOrderItem.updateMany({
-      where: {
-        id: { in: createdItems.map((item) => item.id) },
-      },
-      data: {
-        orderId: order.id,
-      },
-    });
+    // Now link tickets to their order items
+    for (let i = 0; i < order.items.length; i++) {
+      if (!orderItemsData[i]) {
+        throw new Error("Missing ticket group ID for order item");
+      }
+      const ticketIds = orderItemsData[i]?.ticketIds;
+      if (!ticketIds) {
+        throw new Error("Missing ticket IDs for order item");
+      }
 
-    // Fetch complete order with items and tickets
+      const orderItem = order.items[i];
+      if (!orderItem) {
+        throw new Error("Missing order item at index " + i);
+      }
+
+      await prisma.ticket.updateMany({
+        where: {
+          id: { in: ticketIds },
+        },
+        data: {
+          orderItemId: orderItem.id,
+          status: "SOLD",
+        },
+      });
+    }
+
+    // Fetch complete order with tickets
     const completeOrder = await prisma.posOrder.findUnique({
       where: { id: order.id },
       include: {
@@ -130,7 +127,6 @@ export const posOrderService = {
 
     return completeOrder;
   },
-
   async confirmPayment(orderId: number) {
     // Validate order exists
     const order = await prisma.posOrder.findUnique({
