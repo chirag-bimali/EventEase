@@ -215,7 +215,7 @@ export const ticketGroupService = {
         const status = seatStatusMap.get(seatNumber) || "AVAILABLE";
 
         seats.push({
-          number: seatNumber,
+          seatNumber: seatNumber,
           status,
         });
       }
