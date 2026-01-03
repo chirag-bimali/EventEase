@@ -1,4 +1,5 @@
 import { prisma } from "../lib/primsa.ts";
+import type { SeatingRow } from "../schemas/ticketGroup.schema.ts";
 
 export const seatHoldService = {
   async createHolds(
@@ -10,36 +11,92 @@ export const seatHoldService = {
     // Validate ticket group exists
     const ticketGroup = await prisma.ticketGroup.findUnique({
       where: { id: ticketGroupId },
+      include: { tickets: true },
     });
 
     if (!ticketGroup) {
       throw new Error("Ticket group not found");
     }
 
-    // Check if seats exist and are available (not SOLD)
-    const tickets = await prisma.ticket.findMany({
-      where: {
-        ticketGroupId,
-        seatNumber: { in: seatNumbers },
-      },
-    });
+    if (ticketGroup.seatType === "SEAT") {
+      if (!ticketGroup.seatingConfig)
+        throw new Error("Ticket group has no seating configuration");
 
-    if (tickets.length !== seatNumbers.length) {
-      throw new Error("One or more seats do not exist");
+      const seatingConfig = JSON.parse(
+        ticketGroup.seatingConfig
+      ) as SeatingRow[];
+
+      // Build seat map from seating config
+      const validSeats = new Set<string>();
+      for (const rowConfig of seatingConfig) {
+        for (let col = 1; col <= rowConfig.columns; col++) {
+          validSeats.add(`${rowConfig.row}${col}`);
+        }
+      }
+
+      // Validate requested seats exist in seating config
+      const invalidSeats = seatNumbers.filter((seat) => !validSeats.has(seat));
+      if (invalidSeats.length > 0) {
+        throw new Error(
+          `Invalid seat numbers requested: ${invalidSeats.join(", ")}`
+        );
+      }
+
+      // Check if seats are already sold or reserved
+      const existingTickets = ticketGroup.tickets;
+      const unavailableSeats = existingTickets
+        .filter(
+          (ticket) =>
+            seatNumbers.includes(ticket.seatNumber) &&
+            (ticket.status === "SOLD" || ticket.status === "RESERVED")
+        )
+        .map((ticket) => ticket.seatNumber);
+
+      if (unavailableSeats.length > 0) {
+        throw new Error(
+          `The following seats are already sold or reserved: ${unavailableSeats.join(
+            ", "
+          )}`
+        );
+      }
+
+      await prisma.seatHold.deleteMany({
+        where: { ticketGroupId, expiresAt: { lt: new Date() } },
+      });
+
+      const existingHolds = await prisma.seatHold.findMany({
+        where: {
+          ticketGroupId,
+          seatNumber: { in: seatNumbers },
+          expiresAt: { gt: new Date() },
+        },
+      });
+
+      if (existingHolds.length > 0) {
+        const heldSeats = existingHolds.map((hold) => hold.seatNumber);
+        throw new Error(
+          `The following seats are currently held by another user: ${heldSeats.join(
+            ", "
+          )}`
+        );
+      }
+    } else {
+      // For NON-SEAT type, just ensure none are SOLD
+      const existingTickets = ticketGroup.tickets;
+      const soldSeats = existingTickets.filter((t) => t.status === "SOLD");
+
+      if (soldSeats.length > 0) {
+        throw new Error(
+          `Seats ${soldSeats
+            .map((t) => t.seatNumber)
+            .join(", ")} are already sold`
+        );
+      }
     }
 
-    // Check if any seat is already SOLD
-    const soldSeats = tickets.filter((t) => t.status === "SOLD");
-    if (soldSeats.length > 0) {
-      throw new Error(
-        `Seats ${soldSeats.map((t) => t.seatNumber).join(", ")} are already sold`
-      );
-    }
+    const expiresAt = new Date(Date.now() + durationMinutes * 60000);
 
-    // Calculate expiry time (now + duration minutes)
-    const expiresAt = new Date(Date.now() + durationMinutes * 60 * 1000);
-
-    // Create SeatHold records
+    // ✅ Create SeatHold records (NO ticket creation yet)
     const holds = await Promise.all(
       seatNumbers.map((seatNumber) =>
         prisma.seatHold.create({
@@ -52,17 +109,6 @@ export const seatHoldService = {
         })
       )
     );
-
-    // Mark tickets as RESERVED
-    await prisma.ticket.updateMany({
-      where: {
-        ticketGroupId,
-        seatNumber: { in: seatNumbers },
-      },
-      data: {
-        status: "RESERVED",
-      },
-    });
 
     return holds;
   },
