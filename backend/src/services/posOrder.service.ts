@@ -29,6 +29,7 @@ export const posOrderService = {
 
     let totalAmount = 0;
     const orderItemsData = [];
+    const ticketsForTokenGeneration = [];
 
     // First: Generate all tickets and prepare order item data
     for (const item of data.items) {
@@ -83,7 +84,11 @@ export const posOrderService = {
         },
       },
       include: {
-        items: true,
+        items: {
+          include: {
+            tickets: true,
+          },
+        },
       },
     });
 
@@ -112,6 +117,37 @@ export const posOrderService = {
         },
       });
     }
+
+    const orderWithItems = await prisma.posOrder.findUnique({
+      where: { id: order.id },
+      include: {
+        items: {
+          include: {
+            tickets: true,
+          },
+        },
+      },
+    });
+    
+    if (!orderWithItems) {
+      throw new Error("Failed to retrieve created order");
+    }
+
+    for (const item of orderWithItems.items) {
+      ticketsForTokenGeneration.push(
+        ...item.tickets.map((t) => ({
+          id: t.id,
+          ticketGroupId: t.ticketGroupId,
+          seatNumber: t.seatNumber,
+        }))
+      );
+    }
+
+    await ticketService.generateQRTokensForTickets(
+      ticketsForTokenGeneration,
+      data.eventId,
+      order.id
+    );
 
     // Fetch complete order with tickets
     const completeOrder = await prisma.posOrder.findUnique({
