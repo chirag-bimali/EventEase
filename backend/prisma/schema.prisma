@@ -135,6 +135,7 @@ enum TicketStatus {
   AVAILABLE
   RESERVED
   SOLD
+  USED
 }
 
 model PosOrder {
