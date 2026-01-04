@@ -129,7 +129,7 @@ export const qrTokenService = {
       data: {
         validatedAt: new Date(),
         validatedById: validatorUserId,
-        status: "SOLD", // Keep as SOLD, but now with validatedAt timestamp
+        status: "USED",
       },
       include: {
         ticketGroup: { include: { event: true } },
