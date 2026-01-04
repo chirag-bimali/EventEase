@@ -7,6 +7,7 @@ import DashboardPage from "./pages/DashboardPage";
 import { EventsPage } from "./pages/EventPage";
 import { EventDetailPage } from "./pages/EventDetailPage";
 import { POSPage } from "./pages/POSPage";
+import { TicketValidatorPage } from "./pages/TicketValidatorPage";
 
 function App() {
   return (
@@ -62,7 +63,7 @@ function App() {
             path="/validator"
             element={
               <ProtectedRoute>
-                <div>Validator Page</div>
+                <TicketValidatorPage />
               </ProtectedRoute>
             }
           />
