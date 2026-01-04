@@ -8,6 +8,8 @@ import { EventsPage } from "./pages/EventPage";
 import { EventDetailPage } from "./pages/EventDetailPage";
 import { POSPage } from "./pages/POSPage";
 import { TicketValidatorPage } from "./pages/TicketValidatorPage";
+import TicketPage from "./pages/TicketPage";
+import SalesPage from "./pages/SalesPage";
 
 function App() {
   return (
@@ -47,7 +49,7 @@ function App() {
             path="/tickets"
             element={
               <ProtectedRoute>
-                <div>Tickets Page</div>
+                <TicketPage />
               </ProtectedRoute>
             }
           />
@@ -71,7 +73,7 @@ function App() {
             path="/sales"
             element={
               <ProtectedRoute>
-                <div>Sales Page</div>
+                <SalesPage />
               </ProtectedRoute>
             }
           />
