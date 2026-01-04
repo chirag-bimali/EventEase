@@ -10,6 +10,7 @@ import { ticketGroupRouter } from "./routes/ticketGroup.routes.ts";
 import { ticketRouter } from "./routes/ticket.routes.ts";
 import { seatHoldRouter } from "./routes/seatHold.routes.ts";
 import { posOrderRouter } from "./routes/posOrder.routes.ts";
+import { ticketValidationRouter } from "./routes/ticketValidation.routes.ts";
 
 
 // create an express application
@@ -30,6 +31,7 @@ app.use("/api/ticket-groups", ticketGroupRouter);
 app.use("/api/tickets", ticketRouter);
 app.use("/api/seat-holds", seatHoldRouter);
 app.use("/api/pos-orders", posOrderRouter);
+app.use("/api/tickets/validation", ticketValidationRouter);
 
 // define a simple route
 app.get("/", (req: Request, res: Response) => {
