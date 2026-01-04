@@ -224,4 +224,210 @@ export const posOrderService = {
 
     return order;
   },
+    async getAllOrders(params?: {
+    eventId?: number;
+    paymentStatus?: string;
+    searchQuery?: string;
+    startDate?: Date;
+    endDate?: Date;
+    page?: number;
+    limit?: number;
+  }) {
+    const { 
+      eventId, 
+      paymentStatus, 
+      searchQuery, 
+      startDate, 
+      endDate,
+      page = 1, 
+      limit = 50 
+    } = params || {};
+    
+    const where: any = {};
+    
+    if (eventId) {
+      where.eventId = eventId;
+    }
+    
+    if (paymentStatus) {
+      where.paymentStatus = paymentStatus;
+    }
+    
+    if (searchQuery) {
+      where.OR = [
+        { orderNumber: { contains: searchQuery } },
+        { buyerName: { contains: searchQuery } },
+        { buyerEmail: { contains: searchQuery } },
+        { buyerPhone: { contains: searchQuery } }
+      ];
+    }
+    
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = startDate;
+      if (endDate) where.createdAt.lte = endDate;
+    }
+    
+    const [orders, total] = await prisma.$transaction([
+      prisma.posOrder.findMany({
+        where,
+        include: {
+          event: {
+            select: { id: true, name: true }
+          },
+          createdBy: {
+            select: { id: true, username: true }
+          },
+          items: {
+            include: {
+              ticketGroup: {
+                select: { name: true }
+              },
+              tickets: true
+            }
+          }
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.posOrder.count({ where })
+    ]);
+    
+    return { orders, total, page, limit };
+  },
+  
+  async getSalesStats(params?: {
+    eventId?: number;
+    startDate?: Date;
+    endDate?: Date;
+  }) {
+    const { eventId, startDate, endDate } = params || {};
+    
+    const where: any = {};
+    
+    if (eventId) {
+      where.eventId = eventId;
+    }
+    
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = startDate;
+      if (endDate) where.createdAt.lte = endDate;
+    }
+    
+    const [
+      totalOrders,
+      paidOrders,
+      pendingOrders,
+      failedOrders,
+      totalRevenue,
+      paidRevenue
+    ] = await Promise.all([
+      prisma.posOrder.count({ where }),
+      prisma.posOrder.count({ where: { ...where, paymentStatus: 'PAID' } }),
+      prisma.posOrder.count({ where: { ...where, paymentStatus: 'PENDING' } }),
+      prisma.posOrder.count({ where: { ...where, paymentStatus: 'FAILED' } }),
+      prisma.posOrder.aggregate({
+        where,
+        _sum: { totalAmount: true }
+      }),
+      prisma.posOrder.aggregate({
+        where: { ...where, paymentStatus: 'PAID' },
+        _sum: { totalAmount: true }
+      })
+    ]);
+    
+    // Get tickets sold count
+    const ticketsSold = await prisma.ticket.count({
+      where: {
+        status: { in: ['SOLD', 'USED'] },
+        ...(eventId ? { ticketGroup: { eventId } } : {}),
+        ...(startDate || endDate ? {
+          purchasedAt: {
+            ...(startDate ? { gte: startDate } : {}),
+            ...(endDate ? { lte: endDate } : {})
+          }
+        } : {})
+      }
+    });
+    
+    return {
+      totalOrders,
+      paidOrders,
+      pendingOrders,
+      failedOrders,
+      ticketsSold,
+      totalRevenue: totalRevenue._sum.totalAmount || 0,
+      paidRevenue: paidRevenue._sum.totalAmount || 0
+    };
+  },
+  
+  async deleteOrder(orderId: number) {
+    const order = await prisma.posOrder.findUnique({
+      where: { id: orderId },
+      include: { items: true }
+    });
+  
+    if (!order) {
+      throw new Error("Order not found");
+    }
+  
+    // Only allow deletion of pending/failed orders
+    if (order.paymentStatus === 'PAID') {
+      throw new Error("Cannot delete paid orders. Please refund instead.");
+    }
+  
+    // Delete order (cascade will delete items and unlink tickets)
+    await prisma.posOrder.delete({
+      where: { id: orderId }
+    });
+  
+    return { message: "Order deleted successfully" };
+  },
+  
+  async refundOrder(orderId: number) {
+    const order = await prisma.posOrder.findUnique({
+      where: { id: orderId }
+    });
+  
+    if (!order) {
+      throw new Error("Order not found");
+    }
+  
+    if (order.paymentStatus !== 'PAID') {
+      throw new Error("Only paid orders can be refunded");
+    }
+  
+    const updatedOrder = await prisma.posOrder.update({
+      where: { id: orderId },
+      data: {
+        paymentStatus: 'REFUNDED'
+      },
+      include: {
+        items: {
+          include: {
+            tickets: true
+          }
+        }
+      }
+    });
+  
+    // Mark all tickets as available again
+    const ticketIds = updatedOrder.items.flatMap(item => 
+      item.tickets.map(t => t.id)
+    );
+  
+    await prisma.ticket.updateMany({
+      where: { id: { in: ticketIds } },
+      data: { 
+        status: 'AVAILABLE',
+        purchasedById: null,
+        purchasedAt: null,
+        qrToken: null
+      }
+    });
+  
+    return updatedOrder;
+  }
 };
