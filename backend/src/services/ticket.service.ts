@@ -205,6 +205,74 @@ export const ticketService = {
 
     return updatedTickets;
   },
+  // Get all tickets with filtering
+  async getAllTickets(params?: {
+    eventId?: number;
+    status?: TicketStatus;
+    searchQuery?: string; // Search by code, customer name
+    page?: number;
+    limit?: number;
+  }) {
+    const { eventId, status, searchQuery, page = 1, limit = 50 } = params || {};
 
+    const where: any = {};
 
+    if (eventId) {
+      where.ticketGroup = { eventId };
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (searchQuery) {
+      where.OR = [
+        { seatNumber: { contains: searchQuery } },
+        { purchasedBy: { username: { contains: searchQuery } } },
+      ];
+    }
+
+    const [tickets, total] = await prisma.$transaction([
+      prisma.ticket.findMany({
+        where,
+        include: {
+          ticketGroup: {
+            include: {
+              event: true,
+            },
+          },
+          purchasedBy: {
+            select: {
+              id: true,
+              username: true,
+            },
+          },
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.ticket.count({ where }),
+    ]);
+
+    return { tickets, total, page, limit };
+  },
+
+  // Get ticket statistics
+  async getTicketStats(eventId?: number) {
+    const where: any = eventId ? { ticketGroup: { eventId } } : {};
+
+    const [total, sold, reserved, available] = await Promise.all([
+      prisma.ticket.count({ where }),
+      prisma.ticket.count({ where: { ...where, status: TicketStatus.SOLD } }),
+      prisma.ticket.count({
+        where: { ...where, status: TicketStatus.RESERVED },
+      }),
+      prisma.ticket.count({
+        where: { ...where, status: TicketStatus.AVAILABLE },
+      }),
+    ]);
+
+    return { total, sold, reserved, available };
+  },
 };
