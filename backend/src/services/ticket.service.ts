@@ -1,5 +1,6 @@
 import { SeatType, TicketStatus } from "../generated/prisma/index.js";
 import { prisma } from "../lib/primsa.ts";
+import { qrTokenService } from "./qrToken.service.ts";
 
 export const ticketService = {
   // TICKET GENERATION
@@ -177,4 +178,33 @@ export const ticketService = {
 
     return createdTickets;
   },
+
+  async generateQRTokensForTickets(
+    tickets: Array<{ id: number; ticketGroupId: number; seatNumber: string }>,
+    eventId: number,
+    orderId: number
+  ) {
+    const updatedTickets = [];
+
+    for (const ticket of tickets) {
+      const qrToken = qrTokenService.generateQRToken({
+        ticketId: ticket.id,
+        eventId,
+        orderId,
+        seatNumber: ticket.seatNumber,
+        ticketGroupId: ticket.ticketGroupId,
+      });
+
+      const updated = await prisma.ticket.update({
+        where: { id: ticket.id },
+        data: { qrToken },
+      });
+
+      updatedTickets.push(updated);
+    }
+
+    return updatedTickets;
+  },
+
+
 };
