@@ -1,4 +1,3 @@
-
 export const TicketStatus = {
   AVAILABLE: "AVAILABLE",
   RESERVED: "RESERVED",
@@ -15,4 +14,12 @@ export interface Ticket {
   purchasedAt?: string;
   createdAt: string;
   updatedAt: string;
+
+  qrToken?: string; // JWT token for QR code
+  validatedAt?: string;
+  validatedBy?: number;
+}
+
+export interface TicketWithQR extends Ticket {
+  qrDataUrl?: string; // Generated QR code image data URL
 }
