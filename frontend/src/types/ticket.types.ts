@@ -2,6 +2,7 @@ export const TicketStatus = {
   AVAILABLE: "AVAILABLE",
   RESERVED: "RESERVED",
   SOLD: "SOLD",
+  USED: "USED",
 } as const;
 export type TicketStatus = (typeof TicketStatus)[keyof typeof TicketStatus];
 
