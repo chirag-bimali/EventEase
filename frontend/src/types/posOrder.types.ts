@@ -1,4 +1,4 @@
-import type { Ticket } from "./ticket.types";
+import type { TicketWithQR } from "./ticket.types";
 
 export const PaymentMethod = {
   CASH: "CASH",
@@ -22,7 +22,7 @@ export interface PosOrderItem {
   quantity: number;
   unitPrice: number;
   subtotal: number;
-  tickets: Ticket[];
+  tickets: TicketWithQR[];
 }
 
 export interface PosOrder {
