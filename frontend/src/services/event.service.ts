@@ -26,7 +26,7 @@ export const eventService = {
   async updateEvent(
     id: number,
     data: UpdateEventDTO
-  ): Promise<Event> {
+  ): Promise<number> {
     const response = await axiosInstance.patch(`/events/${id}`, data);
     return response.data;
   },
