@@ -81,8 +81,12 @@ export const CreateEventModel = ({ onClose, onCreated }: Props) => {
         name: form.name,
         description: form.description,
         venue: form.venue,
-        startTime: form.startTime ? new Date(form.startTime).toISOString() : undefined,
-        endTime: form.endTime ? new Date(form.endTime).toISOString() : undefined,
+        startTime: form.startTime
+          ? new Date(form.startTime).toISOString()
+          : undefined,
+        endTime: form.endTime
+          ? new Date(form.endTime).toISOString()
+          : undefined,
         imageUrl: form.imageUrl?.trim() || undefined,
       };
       const token = getToken();
