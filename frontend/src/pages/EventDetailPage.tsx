@@ -108,10 +108,16 @@ export const EventDetailPage = () => {
     }
   };
 
-  const handleUpdateEvent = async (updated: EventWithRelations) => {
-    setEvent(updated);
-    if (id) {
-      await fetchTicketGroupsByEvent(parseInt(id));
+  const handleUpdateEvent = async (updatedEventId: number) => {
+    try {
+      if (!updatedEventId) return;
+      const updated = await eventService.getEventById(updatedEventId);
+      setEvent(updated);
+      if (id) {
+        await fetchTicketGroupsByEvent(parseInt(id));
+      }
+    } catch (err) {
+      console.error("Failed to refresh event data:", err);
     }
   };
 

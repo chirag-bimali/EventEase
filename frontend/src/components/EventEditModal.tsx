@@ -13,7 +13,7 @@ interface EventEditModalProps {
   event: EventWithRelations;
   isOpen: boolean;
   onClose: () => void;
-  onUpdated?: (event: EventWithRelations) => void;
+  onUpdated?: (eventId: number) => void;
 }
 
 interface EditForm {
@@ -164,8 +164,8 @@ export default function EventEditModal({
       if (token === null) {
         throw new Error("User is not authenticated");
       }
-      const updated = await eventService.updateEvent(event.id, payload);
-      onUpdated?.(updated as EventWithRelations);
+      await eventService.updateEvent(event.id, payload);
+      onUpdated?.(event.id);
       onClose();
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
