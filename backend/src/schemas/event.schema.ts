@@ -19,19 +19,38 @@ export const createEventSchema = z
       .optional()
       .default("DRAFT"),
   })
-  .refine(
-    (data) => {
-      // If both times are provided, endTime must be after startTime
-      if (data.startTime && data.endTime) {
-        return new Date(data.endTime) > new Date(data.startTime);
-      }
-      return true;
-    },
-    {
-      message: "End time must be after start time",
-      path: ["endTime"],
+  .superRefine((data, ctx) => {
+    const hasStart = data.startTime !== undefined;
+    const hasEnd = data.endTime !== undefined;
+
+    // Rule 1: both-or-none
+    if (hasStart !== hasEnd) {
+      ctx.addIssue({
+        path: ["startTime"],
+        expected: "date",
+        message: "startTime and endTime must be provided together",
+        code: "invalid_type",
+      });
+
+      ctx.addIssue({
+        path: ["endTime"],
+        expected: "date",
+        message: "startTime and endTime must be provided together",
+        code: "invalid_type",
+      });
+      return;
     }
-  );
+
+    if (hasStart && hasEnd) {
+      if (new Date(data.startTime!) >= new Date(data.endTime!)) {
+        ctx.addIssue({
+          path: ["endTime"],
+          message: "endTime must be greater than startTime",
+          code: "custom",
+        })
+      }
+    }
+  });
 
 export const updateEventSchema = z
   .object({
