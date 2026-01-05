@@ -137,10 +137,15 @@ export const EventDetailPage = () => {
   }
 
   // print not formated dates
+  let startDate = undefined;
+  let endDate = undefined;
 
-  const startDate = format(parseISO(event.startTime), "yyyy/MM/dd hh:mm a");
-  const endDate = format(parseISO(event.endTime), "yyyy/MM/dd hh:mm a");
-
+  if (event.endTime) {
+    startDate = format(parseISO(event.startTime ?? null), "yyyy/MM/dd hh:mm a");
+  }
+  if (event.startTime) {
+    endDate = format(parseISO(event.endTime ?? null), "yyyy/MM/dd hh:mm a");
+  }
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
