@@ -73,19 +73,6 @@ export const eventService = {
       })
     );
     return eventsWithTicketGroups;
-
-    return await prisma.event.findMany({
-      include: {
-        ticketGroups: {
-          include: {
-            tickets: {
-              where: { status: TicketStatus.AVAILABLE },
-            },
-          },
-        },
-      },
-      orderBy: { startTime: "asc" },
-    });
   },
 
   async getEventById(id: number) {
@@ -134,49 +121,67 @@ export const eventService = {
 
     return resultsWithRelations[0];
 
-    return await prisma.event.findUnique({
-      where: { id },
-      include: {
-        ticketGroups: {
-          include: {
-            tickets: true,
-          },
-        },
-        createdBy: {
-          select: { id: true, username: true },
-        },
-      },
-    });
   },
 
   async updateEvent(id: number, data: UpdateEventDTO) {
     // Check if event exists
-    const event = await prisma.event.findUnique({
-      where: { id },
-      include: {
-        ticketGroups: {
-          include: {
-            tickets: {
-              where: {
-                status: { in: [TicketStatus.SOLD, TicketStatus.RESERVED] },
-              },
-            },
-          },
-        },
-      },
-    });
+    // const event = await prisma.event.findUnique({
+    //   where: { id },
+    //   include: {
+    //     ticketGroups: {
+    //       include: {
+    //         tickets: {
+    //           where: {
+    //             status: { in: [TicketStatus.SOLD, TicketStatus.RESERVED] },
+    //           },
+    //         },
+    //       },
+    //     },
+    //   },
+    // });
 
+    const events = await prisma.$queryRaw<Event[]>`
+      SELECT * FROM Event
+      WHERE id = ${id}
+    `;
+    if (events.length === 0) {
+      throw new Error("Event not found");
+    }
+    const event = events[0]; 
     if (!event) {
+      throw new Error("Event not found");
+    }
+    const ticketGroups = await prisma.$queryRaw<TicketGroup[]>`
+      SELECT * FROM TicketGroup
+      WHERE eventId = ${event.id}
+    `;
+    const ticketGroupsWithTickets: TicketGroupWithTickets[] = [];
+    for (const ticketGroup of ticketGroups) {
+      const tickets = await prisma.$queryRaw<Ticket[]>`
+        SELECT * FROM Ticket
+        WHERE ticketGroupId = ${ticketGroup.id}
+      `;
+      ticketGroupsWithTickets.push({
+        ...ticketGroup,
+        tickets: tickets,
+      });
+    }
+    const eventWithRelations: EventWithTicketGroups = {
+      ...event,
+      ticketGroups: ticketGroupsWithTickets,
+    };
+
+    if (!eventWithRelations) {
       throw new Error("Event not found");
     }
 
     // Check if event has ended
-    if (event.endTime && event.endTime < new Date()) {
+    if (eventWithRelations.endTime && eventWithRelations.endTime < new Date()) {
       throw new Error("Cannot edit an event that has already ended");
     }
 
     // Check if tickets have been sold
-    const hasSoldTickets = event.ticketGroups.some(
+    const hasSoldTickets = eventWithRelations.ticketGroups.some(
       (tg) => tg.tickets.length > 0
     );
     if (hasSoldTickets) {
@@ -185,7 +190,7 @@ export const eventService = {
 
     // Check status change restrictions (can't go from SOLD_OUT to anything else)
     if (
-      event.status === "SOLD_OUT" &&
+      eventWithRelations.status === "SOLD_OUT" &&
       data.status &&
       data.status !== "SOLD_OUT"
     ) {
@@ -208,13 +213,29 @@ export const eventService = {
       }
     }
 
-    return await prisma.event.update({
-      where: { id },
-      data: updateData,
-      include: {
-        ticketGroups: true,
-      },
-    });
+    // Perform update
+    const q = await prisma.$executeRaw<Event[]>`
+      UPDATE Event
+      SET
+        name = ${updateData.name || eventWithRelations.name},
+        description = ${updateData.description || eventWithRelations.description},
+        venue = ${updateData.venue || eventWithRelations.venue},
+        startTime = ${
+          updateData.startTime !== undefined
+            ? updateData.startTime
+            : eventWithRelations.startTime
+        },
+        endTime = ${
+          updateData.endTime !== undefined
+            ? updateData.endTime
+            : eventWithRelations.endTime
+        },
+        imageUrl = ${updateData.imageUrl || eventWithRelations.imageUrl},
+        status = ${updateData.status || eventWithRelations.status},
+        updatedAt = ${new Date()}
+      WHERE id = ${id}
+    `;
+    return q;
   },
 
   async deleteEvent(id: number) {
