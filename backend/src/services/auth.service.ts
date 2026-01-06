@@ -1,6 +1,7 @@
 import crypto, { hash } from "crypto";
 import jwt from "jsonwebtoken";
 import { prisma } from "../lib/primsa.ts";
+import type { User } from "../generated/prisma/client.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) throw new Error("Environment variable JWT_SECRET is not set.");
@@ -59,8 +60,12 @@ export async function getUserFromToken(token: string) {
   const payload = verifyJWT(token);
   if (!payload) return null;
 
-  const user = await prisma.user.findUnique({
-    where: { id: payload.userId },
-  });
-  return user;
+  const userId = payload.userId;
+
+  const user = await prisma.$queryRaw<User[]>`
+    SELECT * FROM "User"
+    WHERE id = ${userId}
+  `
+  
+  return user[0] || null;
 }
