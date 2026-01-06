@@ -239,8 +239,10 @@ export const eventService = {
   },
 
   async deleteEvent(id: number) {
-    return await prisma.event.delete({
-      where: { id },
-    });
+    const q = await prisma.$executeRaw<Event[]>`
+      DELETE FROM Event
+      WHERE id = ${id}
+    `;
+    return q;
   },
 };
