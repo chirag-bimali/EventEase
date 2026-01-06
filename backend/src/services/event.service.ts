@@ -124,22 +124,6 @@ export const eventService = {
   },
 
   async updateEvent(id: number, data: UpdateEventDTO) {
-    // Check if event exists
-    // const event = await prisma.event.findUnique({
-    //   where: { id },
-    //   include: {
-    //     ticketGroups: {
-    //       include: {
-    //         tickets: {
-    //           where: {
-    //             status: { in: [TicketStatus.SOLD, TicketStatus.RESERVED] },
-    //           },
-    //         },
-    //       },
-    //     },
-    //   },
-    // });
-
     const events = await prisma.$queryRaw<Event[]>`
       SELECT * FROM Event
       WHERE id = ${id}
