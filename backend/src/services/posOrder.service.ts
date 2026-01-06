@@ -11,14 +11,12 @@ const generateOrderNumber = async (): Promise<string> => {
   const todayStart = new Date(year, today.getMonth(), today.getDate());
   const todayEnd = new Date(year, today.getMonth(), today.getDate() + 1);
 
-  const count = await prisma.posOrder.count({
-    where: {
-      createdAt: {
-        gte: todayStart,
-        lt: todayEnd,
-      },
-    },
-  });
+  const countResult = await prisma.$queryRaw<{ count: bigint }[]>`
+    SELECT COUNT(*) AS count FROM PosOrder
+    WHERE createdAt >= ${todayStart} AND createdAt < ${todayEnd}
+  `;
+  const count = Number(countResult[0]?.count || 0);
+
   const sequence = String(count + 1).padStart(4, "0");
   return `ORD-${year}-${today.getMonth() + 1}-${today.getDate()}-${sequence}`;
 };
