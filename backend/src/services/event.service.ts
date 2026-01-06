@@ -17,22 +17,22 @@ type EventWithTicketGroups = Event & {
 export const eventService = {
   // EVENT CRUD
   async createEvent(data: CreateEventDTO, userId: number) {
-    // print start and end time
-    return await prisma.event.create({
-      data: {
-        name: data.name,
-        description: data.description,
-        venue: data.venue,
-        ...(data.startTime && { startTime: new Date(data.startTime) }),
-        ...(data.endTime && { endTime: new Date(data.endTime) }),
-        imageUrl: data.imageUrl || null,
-        createdById: userId,
-        status: data.status || "DRAFT",
-      },
-      include: {
-        ticketGroups: true,
-      },
-    });
+    const q = await prisma.$executeRaw<Event[]>`
+      INSERT INTO Event (name, description, venue, startTime, endTime, imageUrl, createdById, status, createdAt, updatedAt)
+      VALUES (
+        ${data.name},
+        ${data.description},
+        ${data.venue},
+        ${data.startTime ? new Date(data.startTime) : null},
+        ${data.endTime ? new Date(data.endTime) : null},
+        ${data.imageUrl || null},
+        ${userId},
+        ${data.status || "DRAFT"},
+        ${new Date()},
+        ${new Date()}
+      )
+    `;
+    return q;
   },
   async getAllEvents() {
     // Get all events with their ticket groups and only AVAILABLE tickets
@@ -52,7 +52,7 @@ export const eventService = {
       WHERE ticketGroupId IN (${ticketGroups.map((tg) => tg.id)})
         AND status = ${TicketStatus.AVAILABLE}
     `;
-    
+
     // Attach tickets to their respective ticket groups
     const ticketGroupsWithTickets: TicketGroupWithTickets[] = ticketGroups.map(
       (tg) => ({
@@ -62,7 +62,7 @@ export const eventService = {
         ),
       })
     );
-    
+
     // Attach ticket groups to events
     const eventsWithTicketGroups: EventWithTicketGroups[] = events.map(
       (event) => ({
@@ -89,7 +89,6 @@ export const eventService = {
   },
 
   async getEventById(id: number) {
-    
     // Step 1: Get the specific event
     const events = await prisma.$queryRaw<Event[]>`
       SELECT * FROM Event
