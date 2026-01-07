@@ -10,12 +10,10 @@ export interface RoleDTO {
  */
 export async function getAllRoles(): Promise<RoleDTO[]> {
   try {
-    const roles = await prisma.role.findMany({
-      select: {
-        id: true,
-        name: true,
-      },
-    });
+    const roles = await prisma.$queryRaw<RoleDTO[]>`
+      SELECT id, name FROM Role
+    `;
+
     return roles;
   } catch (error) {
     console.error("Error fetching roles:", error);
@@ -28,14 +26,14 @@ export async function getAllRoles(): Promise<RoleDTO[]> {
  */
 export async function getRoleById(id: number): Promise<RoleDTO | null> {
   try {
-    const role = await prisma.role.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        name: true,
-      },
-    });
-    return role;
+    const role = await prisma.$queryRaw<RoleDTO[]>`
+      SELECT id, name FROM Role WHERE id = ${id}
+    `;
+    if (role.length === 0) {
+      return null;
+    }
+    
+    return role[0] || null;
   } catch (error) {
     console.error("Error fetching role:", error);
     throw error;
