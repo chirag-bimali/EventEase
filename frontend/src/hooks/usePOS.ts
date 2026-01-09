@@ -59,6 +59,24 @@ export const usePOS = () => {
       setLoading(false);
     }
   };
+  const getSeatHoldsByTicketGroup = async (
+    ticketGroupId: number
+  ): Promise<SeatHold[] | null> => {
+    try {
+      setLoading(true);
+      setError(null);
+      const holds = await posService.getSeatHoldsByTicketGroup(ticketGroupId);
+      return holds;
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch seat holds";
+      setError(message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
 
   // Release seat holds
   const releaseHolds = async (
@@ -90,8 +108,11 @@ export const usePOS = () => {
       const order = await posService.createOrder(orderData);
       return order;
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to create order";
+      if(axios.isAxiosError(err) && err.response && err.response.data && typeof err.response.data.message === 'string') {
+        setError(err.response.data.message);
+        throw new Error(err.response.data.message);
+      }
+      const message = err instanceof Error ? err.message : "Failed to create order";
       setError(message);
       return null;
     } finally {
@@ -142,5 +163,6 @@ export const usePOS = () => {
     createOrder,
     confirmPayment,
     getOrder,
+    getSeatHoldsByTicketGroup,
   };
 };

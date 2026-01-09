@@ -10,7 +10,12 @@ interface PaymentFormProps {
   onBack: () => void;
 }
 
-export const PaymentForm = ({ event, cart, onComplete, onBack }: PaymentFormProps) => {
+export const PaymentForm = ({
+  event,
+  cart,
+  onComplete,
+  onBack,
+}: PaymentFormProps) => {
   const { createOrder, loading, error } = usePOS();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [buyerName, setBuyerName] = useState("");
@@ -19,33 +24,38 @@ export const PaymentForm = ({ event, cart, onComplete, onBack }: PaymentFormProp
   const [notes, setNotes] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    try {
+      e.preventDefault();
 
-    if (cart.cart.length === 0) {
-      alert("Cart is empty");
-      return;
-    }
+      if (cart.cart.length === 0) {
+        alert("Cart is empty");
+        return;
+      }
 
-    const orderData = {
-      eventId: event.id,
-      items: cart.cart.map((item) => ({
-        ticketGroupId: item.ticketGroup.id,
-        seatType: item.ticketGroup.seatType,
-        quantity: item.quantity,
-        seatNumbers: item.seatNumbers,
-        unitPrice: Number(item.ticketGroup.price),
-      })),
-      paymentMethod,
-      buyerName: buyerName || undefined,
-      buyerPhone: buyerPhone || undefined,
-      buyerEmail: buyerEmail || undefined,
-      notes: notes || undefined,
-    };
+      const orderData = {
+        eventId: event.id,
+        items: cart.cart.map((item) => ({
+          ticketGroupId: item.ticketGroup.id,
+          seatType: item.ticketGroup.seatType,
+          quantity: item.quantity,
+          seatNumbers: item.seatNumbers,
+          unitPrice: Number(item.ticketGroup.price),
+        })),
+        paymentMethod,
+        buyerName: buyerName || undefined,
+        buyerPhone: buyerPhone || undefined,
+        buyerEmail: buyerEmail || undefined,
+        notes: notes || undefined,
+      };
 
-    const order = await createOrder(orderData);
-    
-    if (order) {
-      onComplete(order);
+      const order = await createOrder(orderData);
+
+      if (order) {
+        onComplete(order);
+      }
+    } catch {
+      console.error("Order creation failed");
+      // Error is handled in the hook
     }
   };
 
@@ -65,9 +75,12 @@ export const PaymentForm = ({ event, cart, onComplete, onBack }: PaymentFormProp
               </div>
               {cart.cart.map((item) => (
                 <div key={item.ticketGroup.id} className="flex justify-between">
-                  <span className="text-gray-700">{item.ticketGroup.name}:</span>
+                  <span className="text-gray-700">
+                    {item.ticketGroup.name}:
+                  </span>
                   <span className="font-medium">
-                    {item.quantity || item.seatNumbers?.length} × ${Number(item.ticketGroup.price).toFixed(2)}
+                    {item.quantity || item.seatNumbers?.length} × $
+                    {Number(item.ticketGroup.price).toFixed(2)}
                   </span>
                 </div>
               ))}
@@ -86,27 +99,31 @@ export const PaymentForm = ({ event, cart, onComplete, onBack }: PaymentFormProp
               Payment Method *
             </label>
             <div className="grid grid-cols-2 gap-3">
-              {(["CASH", "CARD", "ONLINE", "OTHER"] as PaymentMethod[]).map((method) => (
-                <button
-                  key={method}
-                  type="button"
-                  onClick={() => setPaymentMethod(method)}
-                  className={`py-3 px-4 rounded-lg border-2 font-medium transition-colors ${
-                    paymentMethod === method
-                      ? "border-purple-600 bg-purple-50 text-purple-700"
-                      : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                  }`}
-                >
-                  {method}
-                </button>
-              ))}
+              {(["CASH", "CARD", "ONLINE", "OTHER"] as PaymentMethod[]).map(
+                (method) => (
+                  <button
+                    key={method}
+                    type="button"
+                    onClick={() => setPaymentMethod(method)}
+                    className={`py-3 px-4 rounded-lg border-2 font-medium transition-colors ${
+                      paymentMethod === method
+                        ? "border-purple-600 bg-purple-50 text-purple-700"
+                        : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                    }`}
+                  >
+                    {method}
+                  </button>
+                )
+              )}
             </div>
           </div>
 
           {/* Buyer Information */}
           <div className="mb-6">
-            <h3 className="font-semibold text-gray-900 mb-3">Buyer Information (Optional)</h3>
-            
+            <h3 className="font-semibold text-gray-900 mb-3">
+              Buyer Information (Optional)
+            </h3>
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
