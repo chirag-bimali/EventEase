@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { TicketGroup } from "../../types/ticketGroup.types";
+import { useTicketAvailability } from "../../hooks/useTicketAvailability";
 
 interface QueueTicketSelectorProps {
   ticketGroup: TicketGroup;
@@ -9,10 +10,25 @@ interface QueueTicketSelectorProps {
 
 export const QueueTicketSelector = ({ ticketGroup, cart, onBack }: QueueTicketSelectorProps) => {
   const [quantity, setQuantity] = useState(1);
+  const { availability, loading, isUnlimited, isSoldOut, hasAvailability } = useTicketAvailability(
+    ticketGroup.id
+  );
+
+  const maxQuantity = availability?.available === -1 ? 999 : availability?.available || 0;
 
   const handleAddToCart = () => {
     if (quantity <= 0) {
       alert("Please enter a valid quantity");
+      return;
+    }
+
+    if (!hasAvailability) {
+      alert("This ticket is sold out or unavailable");
+      return;
+    }
+
+    if (!isUnlimited && quantity > maxQuantity) {
+      alert(`Only ${maxQuantity} tickets available`);
       return;
     }
 
@@ -23,6 +39,16 @@ export const QueueTicketSelector = ({ ticketGroup, cart, onBack }: QueueTicketSe
 
     alert(`Added ${quantity} ticket(s) to cart`);
     onBack();
+  };
+
+  const handleQuantityChange = (newQuantity: number) => {
+    if (newQuantity < 1) {
+      setQuantity(1);
+    } else if (!isUnlimited && newQuantity > maxQuantity) {
+      setQuantity(maxQuantity);
+    } else {
+      setQuantity(newQuantity);
+    }
   };
 
   return (
@@ -50,6 +76,30 @@ export const QueueTicketSelector = ({ ticketGroup, cart, onBack }: QueueTicketSe
           </span>
           <span className="text-gray-600 ml-2">per ticket</span>
         </div>
+
+        {/* Availability Display */}
+        <div className="mt-4">
+          {loading ? (
+            <div className="flex items-center gap-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+              <span className="text-sm text-gray-500">Checking availability...</span>
+            </div>
+          ) : isSoldOut ? (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <span className="text-sm font-medium text-red-600">❌ SOLD OUT</span>
+            </div>
+          ) : isUnlimited ? (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+              <span className="text-sm font-medium text-green-600">✓ Unlimited tickets available</span>
+            </div>
+          ) : (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <span className="text-sm font-medium text-blue-600">
+                ✓ {availability?.available} tickets available
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="mb-6">
@@ -59,14 +109,15 @@ export const QueueTicketSelector = ({ ticketGroup, cart, onBack }: QueueTicketSe
         <input
           type="number"
           min="1"
-          max={ticketGroup.quantity || 100}
+          max={isUnlimited ? 999 : maxQuantity}
           value={quantity}
-          onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-lg"
+          onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
+          disabled={loading || isSoldOut}
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-lg disabled:bg-gray-100 disabled:cursor-not-allowed"
         />
-        {ticketGroup.quantity && (
+        {!isUnlimited && !isSoldOut && (
           <p className="text-sm text-gray-500 mt-1">
-            Maximum: {ticketGroup.quantity} tickets
+            Maximum: {maxQuantity} tickets
           </p>
         )}
       </div>
@@ -82,9 +133,10 @@ export const QueueTicketSelector = ({ ticketGroup, cart, onBack }: QueueTicketSe
 
       <button
         onClick={handleAddToCart}
-        className="w-full bg-purple-600 text-white py-3 px-6 rounded-lg hover:bg-purple-700 transition-colors font-medium text-lg"
+        disabled={loading || isSoldOut || !hasAvailability}
+        className="w-full bg-purple-600 text-white py-3 px-6 rounded-lg hover:bg-purple-700 transition-colors font-medium text-lg disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Add to Cart
+        {isSoldOut ? "Sold Out" : "Add to Cart"}
       </button>
     </div>
   );

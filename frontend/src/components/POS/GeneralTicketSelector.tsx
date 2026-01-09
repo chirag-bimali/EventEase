@@ -1,5 +1,6 @@
-import { useState  } from "react";
+import { useState } from "react";
 import type { TicketGroup } from "../../types/ticketGroup.types";
+import { useTicketAvailability } from "../../hooks/useTicketAvailability";
 
 interface GeneralTicketSelectorProps {
   ticketGroups: TicketGroup[];
@@ -10,6 +11,7 @@ interface GeneralTicketSelectorProps {
 interface GroupSelection {
   ticketGroup: TicketGroup;
   quantity: number;
+  availability: ReturnType<typeof useTicketAvailability>;
 }
 
 export const GeneralTicketSelector = ({ ticketGroups, cart, onBack }: GeneralTicketSelectorProps) => {
@@ -19,17 +21,26 @@ export const GeneralTicketSelector = ({ ticketGroups, cart, onBack }: GeneralTic
       return {
         ticketGroup: group,
         quantity: cartItem?.quantity || 0,
+        availability: { loading: true, availability: null, error: null, isUnlimited: false, isSoldOut: false, hasAvailability: false },
       };
     })
   );
 
   const updateQuantity = (groupId: number, quantity: number) => {
     setSelections((prev) =>
-      prev.map((sel) =>
-        sel.ticketGroup.id === groupId
-          ? { ...sel, quantity: Math.max(0, quantity) }
-          : sel
-      )
+      prev.map((sel) => {
+        if (sel.ticketGroup.id !== groupId) return sel;
+        
+        const availability = sel.availability.availability;
+        const maxQuantity = availability?.available === -1 
+          ? 999 
+          : availability?.available || 0;
+        
+        return {
+          ...sel,
+          quantity: Math.max(0, Math.min(quantity, maxQuantity)),
+        };
+      })
     );
   };
 
@@ -81,51 +92,11 @@ export const GeneralTicketSelector = ({ ticketGroups, cart, onBack }: GeneralTic
 
       <div className="space-y-4 mb-6">
         {selections.map((selection) => (
-          <div
+          <TicketGroupRow
             key={selection.ticketGroup.id}
-            className="border border-gray-200 rounded-lg p-4"
-          >
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <h3 className="font-semibold text-gray-900">{selection.ticketGroup.name}</h3>
-                {selection.ticketGroup.description && (
-                  <p className="text-sm text-gray-600 mt-1">{selection.ticketGroup.description}</p>
-                )}
-              </div>
-              <span className="text-lg font-bold text-purple-600">
-                ${Number(selection.ticketGroup.price).toFixed(2)}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => updateQuantity(selection.ticketGroup.id, selection.quantity - 1)}
-                disabled={selection.quantity === 0}
-                className="w-10 h-10 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-lg"
-              >
-                -
-              </button>
-              <input
-                type="number"
-                min="0"
-                max={selection.ticketGroup.quantity || 100}
-                value={selection.quantity}
-                onChange={(e) => updateQuantity(selection.ticketGroup.id, parseInt(e.target.value) || 0)}
-                className="w-20 text-center px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-              <button
-                onClick={() => updateQuantity(selection.ticketGroup.id, selection.quantity + 1)}
-                className="w-10 h-10 rounded-lg border border-gray-300 hover:bg-gray-100 font-bold text-lg"
-              >
-                +
-              </button>
-              {selection.quantity > 0 && (
-                <span className="ml-auto text-sm font-medium text-gray-700">
-                  Subtotal: ${(Number(selection.ticketGroup.price) * selection.quantity).toFixed(2)}
-                </span>
-              )}
-            </div>
-          </div>
+            selection={selection}
+            onUpdateQuantity={updateQuantity}
+          />
         ))}
       </div>
 
@@ -151,6 +122,88 @@ export const GeneralTicketSelector = ({ ticketGroups, cart, onBack }: GeneralTic
       >
         Add to Cart
       </button>
+    </div>
+  );
+};
+
+// Separate component for each ticket group row with its own availability hook
+const TicketGroupRow = ({
+  selection,
+  onUpdateQuantity,
+}: {
+  selection: { ticketGroup: TicketGroup; quantity: number };
+  onUpdateQuantity: (groupId: number, quantity: number) => void;
+}) => {
+  const { availability, loading, isUnlimited, isSoldOut } = useTicketAvailability(
+    selection.ticketGroup.id
+  );
+
+  const maxQuantity = availability?.available === -1 ? 999 : availability?.available || 0;
+  const canIncrease = !isSoldOut && (isUnlimited || selection.quantity < maxQuantity);
+
+  return (
+    <div className="border border-gray-200 rounded-lg p-4">
+      <div className="flex justify-between items-start mb-3">
+        <div>
+          <h3 className="font-semibold text-gray-900">{selection.ticketGroup.name}</h3>
+          {selection.ticketGroup.description && (
+            <p className="text-sm text-gray-600 mt-1">{selection.ticketGroup.description}</p>
+          )}
+          
+          {/* Availability Display */}
+          <div className="mt-2">
+            {loading ? (
+              <span className="text-xs text-gray-500">Loading availability...</span>
+            ) : isSoldOut ? (
+              <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-1 rounded">
+                SOLD OUT
+              </span>
+            ) : isUnlimited ? (
+              <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded">
+                UNLIMITED AVAILABLE
+              </span>
+            ) : (
+              <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                {availability?.available} AVAILABLE
+              </span>
+            )}
+          </div>
+        </div>
+        <span className="text-lg font-bold text-purple-600">
+          ${Number(selection.ticketGroup.price).toFixed(2)}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => onUpdateQuantity(selection.ticketGroup.id, selection.quantity - 1)}
+          disabled={selection.quantity === 0}
+          className="w-10 h-10 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-lg"
+        >
+          -
+        </button>
+        <input
+          type="number"
+          min="0"
+          max={maxQuantity}
+          value={selection.quantity}
+          onChange={(e) => onUpdateQuantity(selection.ticketGroup.id, parseInt(e.target.value) || 0)}
+          disabled={loading || isSoldOut}
+          className="w-20 text-center px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100"
+        />
+        <button
+          onClick={() => onUpdateQuantity(selection.ticketGroup.id, selection.quantity + 1)}
+          disabled={!canIncrease || loading}
+          className="w-10 h-10 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-lg"
+        >
+          +
+        </button>
+        {selection.quantity > 0 && (
+          <span className="ml-auto text-sm font-medium text-gray-700">
+            Subtotal: ${(Number(selection.ticketGroup.price) * selection.quantity).toFixed(2)}
+          </span>
+        )}
+      </div>
     </div>
   );
 };
