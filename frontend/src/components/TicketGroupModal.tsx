@@ -6,6 +6,7 @@ import type {
   SeatType,
   SeatingConfig,
 } from "../types/ticketGroup.types";
+import axios from "axios";
 
 interface TicketGroupModalProps {
   isOpen: boolean;
@@ -177,9 +178,26 @@ export const TicketGroupModal = ({
         };
         await onSubmit(createData);
       }
+      setFormData({
+        name: "",
+        description: "",
+        price: "",
+        seatType: "GENERAL",
+        quantity: "",
+        prefixFormat: "",
+      });
+      setSeatingRows([]);
+      setError(null);
 
       onClose();
     } catch (err) {
+      if (axios.isAxiosError(err) && err.response) {
+        setError(
+          (err.response.data as { message?: string }).message ||
+            "An error occurred"
+        );
+        return;
+      }
       setError(err instanceof Error ? err.message : "An error occurred");
     }
   };

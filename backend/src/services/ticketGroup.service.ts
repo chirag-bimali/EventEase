@@ -19,6 +19,24 @@ export const ticketGroupService = {
       description,
     } = data;
 
+    // check if event is finished
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+    });
+
+    if (!event) {
+      throw new Error("Event not found");
+    }
+
+    const eventDate = event.endTime;
+    if (!eventDate) {
+      throw new Error("Event end time not defined");
+    }
+    const now = new Date();
+    if (eventDate < now) {
+      throw new Error("Cannot create ticket group for finished event");
+    }
+
     let totalSeats = 0;
 
     if (
@@ -71,6 +89,35 @@ export const ticketGroupService = {
       eventId,
     } = data;
 
+    // check if event is finished
+    const ticketGroup = await prisma.ticketGroup.findUnique({
+      where: { id },
+      include: {
+        event: true,
+        tickets: true,
+      },
+    });
+
+    if (!ticketGroup) {
+      throw new Error("Ticket group not found");
+    }
+
+    const eventDate = ticketGroup.event.endTime;
+    if (!eventDate) {
+      throw new Error("Event end time not defined");
+    }
+    const now = new Date();
+    if (eventDate < now) {
+      throw new Error("Cannot update ticket group for finished event");
+    }
+
+    const soldTickets = ticketGroup.tickets.filter(
+      (ticket) => ticket.status === "SOLD"
+    );
+    if (soldTickets.length > 0) {
+      throw new Error("Cannot update ticket group with sold tickets");
+    }
+
     const updateData: Record<string, unknown> = {};
 
     if (name !== undefined) updateData.name = name;
@@ -96,6 +143,34 @@ export const ticketGroupService = {
   },
 
   async deleteTicketGroup(id: number) {
+    // check if event is finished or any ticket is sold
+    const ticketGroup = await prisma.ticketGroup.findUnique({
+      where: { id },
+      include: {
+        event: true,
+        tickets: true,
+      },
+    });
+
+    if (!ticketGroup) {
+      throw new Error("Ticket group not found");
+    }
+
+    const eventDate = ticketGroup.event.endTime;
+    if (!eventDate) {
+      throw new Error("Event end time not defined");
+    }
+    const now = new Date();
+    if (eventDate < now) {
+      throw new Error("Cannot delete ticket group for finished event");
+    }
+
+    const soldTickets = ticketGroup.tickets.filter(
+      (ticket) => ticket.status === "SOLD"
+    );
+    if (soldTickets.length > 0) {
+      throw new Error("Cannot delete ticket group with sold tickets");
+    }
     return await prisma.ticketGroup.delete({
       where: { id },
     });

@@ -120,6 +120,12 @@ export const useTicketGroups = () => {
         }));
         return updatedTicketGroup;
       } catch (err: unknown) {
+        if(axios.isAxiosError(err) && err.response){
+          console.error("Axios error:", err);
+          const message = err.response?.data?.message || "Failed to update ticket group";
+          setState((prev) => ({ ...prev, error: message, loading: false }));
+          throw new Error(message);
+        }
         const message =
           err instanceof Error ? err.message : "Failed to update ticket group";
         setState((prev) => ({ ...prev, error: message, loading: false }));
@@ -144,6 +150,12 @@ export const useTicketGroups = () => {
         loading: false,
       }));
     } catch (err: unknown) {
+      if(axios.isAxiosError(err) && err.response){
+        console.error("Axios error:", err);
+        const message = err.response?.data?.message || "Failed to delete ticket group";
+        setState((prev) => ({ ...prev, error: message, loading: false }));
+        throw new Error(message);
+      }
       const message =
         err instanceof Error ? err.message : "Failed to delete ticket group";
       setState((prev) => ({ ...prev, error: message, loading: false }));

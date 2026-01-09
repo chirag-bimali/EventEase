@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import * as ticketGroupService from "../services/ticketGroup.service.ts";
 import {
   createTicketGroupSchema,
-  updateTicketGroupSchema
+  updateTicketGroupSchema,
 } from "../schemas/ticketGroup.schema.ts";
 // Ticket Group Controllers
 export const createTicketGroup = async (
@@ -19,9 +19,15 @@ export const createTicketGroup = async (
       });
     }
 
-    const ticketGroup = await ticketGroupService.ticketGroupService.createTicketGroup(parsed.data);
+    const ticketGroup =
+      await ticketGroupService.ticketGroupService.createTicketGroup(
+        parsed.data
+      );
     return res.status(201).json(ticketGroup);
   } catch (error) {
+    if (error instanceof Error) {
+      return res.status(400).json({ message: error.message });
+    }
     next(error);
   }
 };
@@ -40,9 +46,15 @@ export const getTicketGroupsByEvent = async (
       return res.status(400).json({ message: "Invalid event ID" });
     }
 
-    const ticketGroups = await ticketGroupService.ticketGroupService.getTicketGroupsByEvent(eventId);
+    const ticketGroups =
+      await ticketGroupService.ticketGroupService.getTicketGroupsByEvent(
+        eventId
+      );
     return res.json(ticketGroups);
   } catch (error) {
+    if (error instanceof Error) {
+      return res.status(400).json({ message: error.message });
+    }
     next(error);
   }
 };
@@ -71,9 +83,16 @@ export const updateTicketGroup = async (
     const filteredData = Object.fromEntries(
       Object.entries(parsed.data).filter(([, value]) => value !== undefined)
     );
-    const ticketGroup = await ticketGroupService.ticketGroupService.updateTicketGroup(id, filteredData);
+    const ticketGroup =
+      await ticketGroupService.ticketGroupService.updateTicketGroup(
+        id,
+        filteredData
+      );
     return res.json(ticketGroup);
   } catch (error) {
+    if (error instanceof Error) {
+      return res.status(400).json({ message: error.message });
+    }
     next(error);
   }
 };
@@ -95,6 +114,9 @@ export const deleteTicketGroup = async (
     await ticketGroupService.ticketGroupService.deleteTicketGroup(id);
     return res.status(204).send();
   } catch (error) {
+    if (error instanceof Error) {
+      return res.status(400).json({ message: error.message });
+    }
     next(error);
   }
 };
@@ -113,7 +135,10 @@ export const getTicketGroupAvailability = async (
       return res.status(400).json({ message: "Invalid ticket group ID" });
     }
 
-    const availability = await ticketGroupService.ticketGroupService.getTicketGroupAvailability(id);
+    const availability =
+      await ticketGroupService.ticketGroupService.getTicketGroupAvailability(
+        id
+      );
     return res.json(availability);
   } catch (error) {
     next(error);
@@ -134,7 +159,9 @@ export const getSeatLayout = async (
       return res.status(400).json({ message: "Invalid ticket group ID" });
     }
 
-    const layout = await ticketGroupService.ticketGroupService.getSeatLayout(id);
+    const layout = await ticketGroupService.ticketGroupService.getSeatLayout(
+      id
+    );
     return res.json(layout);
   } catch (error) {
     next(error);

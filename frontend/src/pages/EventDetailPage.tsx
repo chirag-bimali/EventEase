@@ -14,6 +14,7 @@ import type {
   CreateTicketGroupDTO,
   UpdateTicketGroupDTO,
 } from "../types/ticketGroup.types";
+import axios from "axios";
 
 export const EventDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -85,6 +86,13 @@ export const EventDetailPage = () => {
       try {
         await deleteTicketGroup(ticketGroupId);
       } catch (err) {
+        if (axios.isAxiosError(err) && err.response) {
+          const message =
+            (err.response.data as { message?: string }).message ||
+            "Failed to delete ticket group";
+          alert(message);
+          return;
+        }
         console.error("Failed to delete ticket group:", err);
         alert("Failed to delete ticket group");
       }
@@ -103,6 +111,13 @@ export const EventDetailPage = () => {
         await createTicketGroup(data as CreateTicketGroupDTO);
       }
     } catch (err) {
+      if (axios.isAxiosError(err) && err.response) {
+        const message =
+          (err.response.data as { message?: string }).message ||
+          "Failed to submit ticket group";
+        alert(message);
+        throw err;
+      }
       alert("Failed to submit ticket group");
       throw err;
     }
