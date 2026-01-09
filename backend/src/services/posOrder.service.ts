@@ -1,6 +1,12 @@
 import type { CreatePosOrderDTO } from "../schemas/posOrder.schema.ts";
 import { prisma } from "../lib/primsa.ts";
 import { ticketService } from "./ticket.service.ts";
+import type {
+  PosOrder,
+  PosOrderItem,
+  Ticket,
+} from "../generated/prisma/edge.js";
+import { releaseSeatHoldSchema } from "../schemas/seatHold.schema.ts";
 
 // Generate unique order number: ORD-2026-0001
 const generateOrderNumber = async (): Promise<string> => {
@@ -25,8 +31,26 @@ export const posOrderService = {
   async createOrder(data: CreatePosOrderDTO, createdById: number) {
     const orderNumber = await generateOrderNumber();
 
+    // check if event is published and finished
+    const events = await prisma.event.findMany({
+      where: {
+        id: data.eventId,
+        status: "PUBLISHED",
+        endTime: { gt: new Date() },
+      },
+    });
+    if (events.length === 0) {
+      throw new Error("Event not found, not published, or already finished");
+    }
+
     let totalAmount = 0;
-    const orderItemsData = [];
+    const orderItemsData: {
+      quantity: number;
+      unitPrice: number;
+      subtotal: number;
+      ticketGroupId: number;
+      ticketIds: number[];
+    }[] = [];
     const ticketsForTokenGeneration = [];
 
     // First: Generate all tickets and prepare order item data
@@ -39,7 +63,7 @@ export const posOrderService = {
         item.seatNumbers
       );
 
-      if (tickets.length === 0) {
+      if (tickets && tickets.length === 0) {
         throw new Error(
           `Failed to generate tickets for ticket group ${item.ticketGroupId}`
         );
@@ -63,31 +87,85 @@ export const posOrderService = {
     const paidAt = data.paymentMethod === "CASH" ? new Date() : null;
 
     // Create order with nested items in ONE transaction
-    const order = await prisma.posOrder.create({
-      data: {
-        orderNumber,
-        eventId: data.eventId,
-        createdById,
-        totalAmount,
-        currency: "USD",
-        paymentMethod: data.paymentMethod,
-        paymentStatus,
-        paidAt,
-        buyerName: data.buyerName || null,
-        buyerPhone: data.buyerPhone || null,
-        buyerEmail: data.buyerEmail || null,
-        notes: data.notes || null,
-        items: {
-          create: orderItemsData.map(({ ticketIds, ...itemData }) => itemData),
-        },
-      },
-      include: {
-        items: {
-          include: {
-            tickets: true,
-          },
-        },
-      },
+    const order: {
+      items: ({ tickets: Ticket[] } & PosOrderItem)[];
+    } & PosOrder = await prisma.$transaction(async (tx) => {
+      const now = new Date();
+
+      // 1. Insert PosOrder
+      await tx.$executeRaw`
+        INSERT INTO PosOrder (
+          orderNumber, eventId, createdById, totalAmount, currency,
+          paymentMethod, paymentStatus, paidAt, buyerName, buyerPhone,
+          buyerEmail, notes, createdAt, updatedAt
+        )
+        VALUES (
+          ${orderNumber}, 
+          ${data.eventId}, 
+          ${createdById}, 
+          ${totalAmount}, 
+          ${"USD"},
+          ${data.paymentMethod}, 
+          ${paymentStatus}, 
+          ${paidAt}, 
+          ${data.buyerName || null},
+          ${data.buyerPhone || null}, 
+          ${data.buyerEmail || null}, 
+          ${data.notes || null},
+          ${now}, 
+          ${now}
+        )
+      `;
+
+      // 2. Get the created order ID
+      const orderRows = await tx.$queryRaw<PosOrder[]>`
+        SELECT * FROM PosOrder WHERE orderNumber = ${orderNumber}
+      `;
+
+      if (!orderRows[0]) {
+        throw new Error("Failed to create order");
+      }
+      const createdOrder = orderRows[0];
+
+      // 3. Insert PosOrderItem rows
+      for (const itemData of orderItemsData.map(
+        ({ ticketIds, ...rest }) => rest
+      )) {
+        await tx.$executeRaw`
+          INSERT INTO PosOrderItem (
+            orderId, ticketGroupId, quantity, unitPrice, subtotal
+          )
+          VALUES (
+            ${createdOrder.id}, ${itemData.ticketGroupId}, ${itemData.quantity},
+            ${itemData.unitPrice}, ${itemData.subtotal}
+          )
+        `;
+      }
+
+      // 4. Fetch complete order with nested items and tickets
+      const orderWithItems = await tx.$queryRaw<PosOrder[]>`
+        SELECT * FROM PosOrder WHERE id = ${createdOrder.id}
+      `;
+
+      if (!orderWithItems[0]) {
+        throw new Error("Failed to retrieve order");
+      }
+
+      const items = await tx.$queryRaw<PosOrderItem[]>`
+        SELECT * FROM PosOrderItem WHERE orderId = ${createdOrder.id}
+      `;
+
+      // Fetch tickets for each item
+      const itemsWithTickets = await Promise.all(
+        items.map(async (item) => {
+          const tickets = await tx.$queryRaw<Ticket[]>`
+        SELECT * FROM Ticket WHERE orderItemId = ${item.id}
+      `;
+          return { ...item, tickets };
+        })
+      );
+
+      return { ...orderWithItems[0], items: itemsWithTickets };
     });
 
     // Now link tickets to their order items
@@ -116,17 +194,47 @@ export const posOrderService = {
       });
     }
 
-    const orderWithItems = await prisma.posOrder.findUnique({
-      where: { id: order.id },
-      include: {
-        items: {
-          include: {
-            tickets: true,
-          },
-        },
-      },
-    });
-    
+    // const orderWithItems = await prisma.posOrder.findUnique({
+    //   where: { id: order.id },
+    //   include: {
+    //     items: {
+    //       include: {
+    //         tickets: true,
+    //       },
+    //     },
+    //   },
+    // });
+
+    const ordersOnly = await prisma.$queryRaw<PosOrder[]>`
+      SELECT * FROM PosOrder WHERE id = ${order.id}
+    `;
+    const orderOnly = ordersOnly[0];
+    if (!orderOnly) {
+      throw new Error("Failed to retrieve created order");
+    }
+
+    const itemsOnly = await prisma.$queryRaw<PosOrderItem[]>`
+      SELECT * FROM PosOrderItem WHERE orderId = ${order.id}
+    `;
+    if (itemsOnly.length === 0) {
+      throw new Error("Failed to retrieve created order");
+    }
+
+    const itemsWithTickets = await Promise.all(
+      itemsOnly.map(async (item) => {
+        const tickets = await prisma.$queryRaw<Ticket[]>`
+          SELECT * FROM Ticket WHERE orderItemId = ${item.id}
+        `;
+        return { ...item, tickets };
+      })
+    );
+    const orderWithItems: {
+      items: ({ tickets: Ticket[] } & PosOrderItem)[];
+    } & PosOrder = {
+      items: itemsWithTickets,
+      ...orderOnly,
+    };
+
     if (!orderWithItems) {
       throw new Error("Failed to retrieve created order");
     }
@@ -140,14 +248,24 @@ export const posOrderService = {
         }))
       );
     }
-
     await ticketService.generateQRTokensForTickets(
       ticketsForTokenGeneration,
       data.eventId,
       order.id
     );
 
+    // delete expired and sold seat holds
+    await prisma.$executeRaw`
+      DELETE FROM SeatHold
+      WHERE expiresAt < ${new Date()}
+         OR (ticketGroupId, seatNumber) IN (
+           SELECT ticketGroupId, seatNumber FROM Ticket
+           WHERE orderItemId IS NOT NULL
+         )
+    `;
+
     // Fetch complete order with tickets
+
     const completeOrder = await prisma.posOrder.findUnique({
       where: { id: order.id },
       include: {
@@ -222,7 +340,7 @@ export const posOrderService = {
 
     return order;
   },
-    async getAllOrders(params?: {
+  async getAllOrders(params?: {
     eventId?: number;
     paymentStatus?: string;
     searchQuery?: string;
@@ -231,125 +349,127 @@ export const posOrderService = {
     page?: number;
     limit?: number;
   }) {
-    const { 
-      eventId, 
-      paymentStatus, 
-      searchQuery, 
-      startDate, 
+    const {
+      eventId,
+      paymentStatus,
+      searchQuery,
+      startDate,
       endDate,
-      page = 1, 
-      limit = 50 
+      page = 1,
+      limit = 50,
     } = params || {};
-    
+
     const where: any = {};
-    
+
     if (eventId) {
       where.eventId = eventId;
     }
-    
+
     if (paymentStatus) {
       where.paymentStatus = paymentStatus;
     }
-    
+
     if (searchQuery) {
       where.OR = [
         { orderNumber: { contains: searchQuery } },
         { buyerName: { contains: searchQuery } },
         { buyerEmail: { contains: searchQuery } },
-        { buyerPhone: { contains: searchQuery } }
+        { buyerPhone: { contains: searchQuery } },
       ];
     }
-    
+
     if (startDate || endDate) {
       where.createdAt = {};
       if (startDate) where.createdAt.gte = startDate;
       if (endDate) where.createdAt.lte = endDate;
     }
-    
+
     const [orders, total] = await prisma.$transaction([
       prisma.posOrder.findMany({
         where,
         include: {
           event: {
-            select: { id: true, name: true }
+            select: { id: true, name: true },
           },
           createdBy: {
-            select: { id: true, username: true }
+            select: { id: true, username: true },
           },
           items: {
             include: {
               ticketGroup: {
-                select: { name: true }
+                select: { name: true },
               },
-              tickets: true
-            }
-          }
+              tickets: true,
+            },
+          },
         },
         skip: (page - 1) * limit,
         take: limit,
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: "desc" },
       }),
-      prisma.posOrder.count({ where })
+      prisma.posOrder.count({ where }),
     ]);
-    
+
     return { orders, total, page, limit };
   },
-  
+
   async getSalesStats(params?: {
     eventId?: number;
     startDate?: Date;
     endDate?: Date;
   }) {
     const { eventId, startDate, endDate } = params || {};
-    
+
     const where: any = {};
-    
+
     if (eventId) {
       where.eventId = eventId;
     }
-    
+
     if (startDate || endDate) {
       where.createdAt = {};
       if (startDate) where.createdAt.gte = startDate;
       if (endDate) where.createdAt.lte = endDate;
     }
-    
+
     const [
       totalOrders,
       paidOrders,
       pendingOrders,
       failedOrders,
       totalRevenue,
-      paidRevenue
+      paidRevenue,
     ] = await Promise.all([
       prisma.posOrder.count({ where }),
-      prisma.posOrder.count({ where: { ...where, paymentStatus: 'PAID' } }),
-      prisma.posOrder.count({ where: { ...where, paymentStatus: 'PENDING' } }),
-      prisma.posOrder.count({ where: { ...where, paymentStatus: 'FAILED' } }),
+      prisma.posOrder.count({ where: { ...where, paymentStatus: "PAID" } }),
+      prisma.posOrder.count({ where: { ...where, paymentStatus: "PENDING" } }),
+      prisma.posOrder.count({ where: { ...where, paymentStatus: "FAILED" } }),
       prisma.posOrder.aggregate({
         where,
-        _sum: { totalAmount: true }
+        _sum: { totalAmount: true },
       }),
       prisma.posOrder.aggregate({
-        where: { ...where, paymentStatus: 'PAID' },
-        _sum: { totalAmount: true }
-      })
+        where: { ...where, paymentStatus: "PAID" },
+        _sum: { totalAmount: true },
+      }),
     ]);
-    
+
     // Get tickets sold count
     const ticketsSold = await prisma.ticket.count({
       where: {
-        status: { in: ['SOLD', 'USED'] },
+        status: { in: ["SOLD", "USED"] },
         ...(eventId ? { ticketGroup: { eventId } } : {}),
-        ...(startDate || endDate ? {
-          purchasedAt: {
-            ...(startDate ? { gte: startDate } : {}),
-            ...(endDate ? { lte: endDate } : {})
-          }
-        } : {})
-      }
+        ...(startDate || endDate
+          ? {
+              purchasedAt: {
+                ...(startDate ? { gte: startDate } : {}),
+                ...(endDate ? { lte: endDate } : {}),
+              },
+            }
+          : {}),
+      },
     });
-    
+
     return {
       totalOrders,
       paidOrders,
@@ -357,75 +477,79 @@ export const posOrderService = {
       failedOrders,
       ticketsSold,
       totalRevenue: totalRevenue._sum.totalAmount || 0,
-      paidRevenue: paidRevenue._sum.totalAmount || 0
+      paidRevenue: paidRevenue._sum.totalAmount || 0,
     };
   },
-  
+
   async deleteOrder(orderId: number) {
-    const order = await prisma.posOrder.findUnique({
-      where: { id: orderId },
-      include: { items: true }
-    });
-  
+    const orders = await prisma.$queryRaw<
+      PosOrder[]
+    >`SELECT * FROM PosOrder WHERE id = ${orderId}`;
+
+    if (!orders || orders.length === 0) {
+      throw new Error("Order not found");
+    }
+    const order = orders[0];
     if (!order) {
       throw new Error("Order not found");
     }
-  
+
     // Only allow deletion of pending/failed orders
-    if (order.paymentStatus === 'PAID') {
+    if (order.paymentStatus === "PAID") {
       throw new Error("Cannot delete paid orders. Please refund instead.");
     }
-  
+
     // Delete order (cascade will delete items and unlink tickets)
-    await prisma.posOrder.delete({
-      where: { id: orderId }
-    });
-  
+    await prisma.$queryRaw`
+      DELETE FROM PosOrder
+      WHERE id = ${orderId}
+    `;
+
     return { message: "Order deleted successfully" };
   },
-  
+
   async refundOrder(orderId: number) {
     const order = await prisma.posOrder.findUnique({
-      where: { id: orderId }
+      where: { id: orderId },
     });
-  
+
     if (!order) {
       throw new Error("Order not found");
     }
-  
-    if (order.paymentStatus !== 'PAID') {
+
+    if (order.paymentStatus !== "PAID") {
       throw new Error("Only paid orders can be refunded");
     }
-  
+
     const updatedOrder = await prisma.posOrder.update({
       where: { id: orderId },
       data: {
-        paymentStatus: 'REFUNDED'
+        paymentStatus: "REFUNDED",
       },
       include: {
         items: {
           include: {
-            tickets: true
-          }
-        }
-      }
+            tickets: true,
+          },
+        },
+      },
     });
-  
+
     // Mark all tickets as available again
-    const ticketIds = updatedOrder.items.flatMap(item => 
-      item.tickets.map(t => t.id)
+    const ticketIds = updatedOrder.items.flatMap((item) =>
+      item.tickets.map((t) => t.id)
     );
-  
+
     await prisma.ticket.updateMany({
       where: { id: { in: ticketIds } },
-      data: { 
-        status: 'AVAILABLE',
+      data: {
+        status: "AVAILABLE",
         purchasedById: null,
         purchasedAt: null,
-        qrToken: null
-      }
+        qrToken: null,
+      },
     });
-  
+
     return updatedOrder;
-  }
+  },
 };

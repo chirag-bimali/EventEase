@@ -231,7 +231,7 @@ export const ticketService = {
     eventId: number,
     orderId: number
   ) {
-    const updatedTickets = [];
+    let total: number = 0;
 
     for (const ticket of tickets) {
       const qrToken = qrTokenService.generateQRToken({
@@ -242,19 +242,20 @@ export const ticketService = {
         ticketGroupId: ticket.ticketGroupId,
       });
 
-      const updated = await prisma.$queryRaw<Ticket[]>`
+      const updated = await prisma.$executeRaw`
         UPDATE Ticket
         SET qrToken = ${qrToken}
         WHERE id = ${ticket.id}
       `;
-      if (updated.length === 0) {
+      
+      if (updated === 0) {
         throw new Error("Failed to update ticket with QR token");
       }
 
-      updatedTickets.push(...updated);
+      total += updated;
     }
 
-    return updatedTickets;
+    return total;
   },
   // Get all tickets with filtering
   async getAllTickets(params?: {

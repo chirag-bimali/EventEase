@@ -10,11 +10,6 @@ if (!QR_SECRET) throw new Error("QR_SECRET or JWT_SECRET not set");
 const TOKEN_EXPIRY = "365d";
 
 export const qrTokenService = {
-  /**
-   * Generate a signed JWT token for a ticket
-   * Token contains: ticketId, eventId, orderId, seatNumber
-   * Frontend will convert this to QR code for printing
-   */
   generateQRToken(ticketData: {
     ticketId: number;
     eventId: number;
@@ -37,10 +32,6 @@ export const qrTokenService = {
     return token;
   },
 
-  /**
-   * Verify and decode a QR token
-   * Returns decoded token payload or null if invalid
-   */
   verifyQRToken(token: string): {
     ticketId: number;
     eventId: number;
@@ -62,10 +53,6 @@ export const qrTokenService = {
     }
   },
 
-  /**
-   * Validate a ticket using the QR token
-   * Marks ticket as validated and records validator
-   */
   async validateTicket(
     qrToken: string,
     validatorUserId: number

@@ -24,12 +24,15 @@ export const createPosOrder = async (
     const order = await posOrderService.createOrder(parsed.data, userId);
     return res.status(201).json(order);
   } catch (error: any) {
+    console.log("Error in generateTicket:", error);
     if (
       error.message.includes("not found") ||
       error.message.includes("not available") ||
       error.message.includes("sold") ||
       error.message.includes("limit") ||
-      error.message.includes("Failed to generate")
+      error.message.includes("Failed to generate") ||
+      error.message.includes("Seat") || 
+      error.message.includes("sold")
     ) {
       return res.status(400).json({ message: error.message });
     }

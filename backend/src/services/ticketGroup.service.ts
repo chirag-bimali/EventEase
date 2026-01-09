@@ -257,6 +257,14 @@ export const ticketGroupService = {
         },
       },
     });
+    // also get seat holds for the ticket group to check if any seats are held
+    // also check if the hold is expired or not
+    const seatHolds = await prisma.seatHold.findMany({
+      where: { ticketGroupId , expiresAt: { gt: new Date() } },
+      select: {
+        seatNumber: true,
+      },
+    });
 
     if (!ticketGroup) {
       throw new Error("Ticket group not found");
@@ -287,6 +295,13 @@ export const ticketGroupService = {
       // Generate seat numbers for each column in this row
       for (let col = 1; col <= rowConfig.columns; col++) {
         const seatNumber = `${rowConfig.row}${col}`;
+        if (seatHolds.find((hold) => hold.seatNumber === seatNumber)) {
+          seats.push({
+            seatNumber: seatNumber,
+            status: "RESERVED",
+          });
+          continue;
+        }
         const status = seatStatusMap.get(seatNumber) || "AVAILABLE";
 
         seats.push({

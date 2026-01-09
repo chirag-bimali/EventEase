@@ -1,3 +1,10 @@
+import { get } from "node:http";
+import type {
+  SeatHold,
+  Ticket,
+  TicketGroup,
+} from "../generated/prisma/edge.js";
+import { Prisma } from "../generated/prisma/edge.js";
 import { prisma } from "../lib/primsa.ts";
 import type { SeatingRow } from "../schemas/ticketGroup.schema.ts";
 
@@ -9,10 +16,22 @@ export const seatHoldService = {
     durationMinutes: number = 10
   ) {
     // Validate ticket group exists
-    const ticketGroup = await prisma.ticketGroup.findUnique({
-      where: { id: ticketGroupId },
-      include: { tickets: true },
-    });
+
+    const ticketGroups = await prisma.$queryRaw<TicketGroup[]>`
+      SELECT * FROM TicketGroup WHERE id = ${ticketGroupId}
+    `;
+    if (ticketGroups.length === 0) {
+      throw new Error("Ticket group not found");
+    }
+
+    const tickets = await prisma.$queryRaw<Ticket[]>`
+      SELECT * FROM Ticket WHERE ticketGroupId = ${ticketGroupId}
+    `;
+
+    const ticketGroup: TicketGroup & { tickets: Ticket[] } = {
+      ...ticketGroups[0]!,
+      tickets: tickets,
+    };
 
     if (!ticketGroup) {
       throw new Error("Ticket group not found");
@@ -60,17 +79,20 @@ export const seatHoldService = {
         );
       }
 
-      await prisma.seatHold.deleteMany({
-        where: { ticketGroupId, expiresAt: { lt: new Date() } },
-      });
+      await prisma.$executeRaw`
+        DELETE FROM SeatHold
+        WHERE ticketGroupId = ${ticketGroupId} AND expiresAt < ${new Date()}
+      `;
+      if (seatNumbers.length === 0) {
+        throw new Error("No seat numbers provided");
+      }
 
-      const existingHolds = await prisma.seatHold.findMany({
-        where: {
-          ticketGroupId,
-          seatNumber: { in: seatNumbers },
-          expiresAt: { gt: new Date() },
-        },
-      });
+      const existingHolds = await prisma.$queryRaw<SeatHold[]>`
+        SELECT * FROM SeatHold
+        WHERE ticketGroupId = ${ticketGroupId} AND 
+        seatNumber IN (${Prisma.join(seatNumbers)}) AND 
+        expiresAt > ${new Date()}
+      `;
 
       if (existingHolds.length > 0) {
         const heldSeats = existingHolds.map((hold) => hold.seatNumber);
@@ -81,15 +103,23 @@ export const seatHoldService = {
         );
       }
     } else {
-      // For NON-SEAT type, just ensure none are SOLD
+      // For NON-SEAT type, just ensure if enough tickets are available
       const existingTickets = ticketGroup.tickets;
-      const soldSeats = existingTickets.filter((t) => t.status === "SOLD");
+      const reservedOrSoldCount = existingTickets.filter(
+        (ticket) => ticket.status === "SOLD" || ticket.status === "RESERVED"
+      ).length;
 
-      if (soldSeats.length > 0) {
+      if (ticketGroup.quantity === null) {
         throw new Error(
-          `Seats ${soldSeats
-            .map((t) => t.seatNumber)
-            .join(", ")} are already sold`
+          "Ticket group has unlimited quantity, cannot hold tickets"
+        );
+      }
+
+      const availableCount = ticketGroup.quantity - reservedOrSoldCount;
+
+      if (seatNumbers.length > availableCount) {
+        throw new Error(
+          `Not enough available tickets. Requested: ${seatNumbers.length}, Available: ${availableCount}`
         );
       }
     }
@@ -97,19 +127,32 @@ export const seatHoldService = {
     const expiresAt = new Date(Date.now() + durationMinutes * 60000);
 
     // ✅ Create SeatHold records (NO ticket creation yet)
-    const holds = await Promise.all(
-      seatNumbers.map((seatNumber) =>
-        prisma.seatHold.create({
-          data: {
-            ticketGroupId,
-            seatNumber,
-            heldBy: userId,
-            expiresAt,
-          },
-        })
-      )
-    );
+    const holdCounts = await prisma.$transaction(async (tx) => {
+      let count = 0;
+      for (const seatNumber of seatNumbers) {
+        await tx.$executeRaw`
+          INSERT INTO SeatHold (ticketGroupId, seatNumber, heldBy, expiresAt)
+          VALUES (${ticketGroupId}, ${seatNumber}, ${userId}, ${expiresAt})
+        `;
+        count++;
+      }
+      return count;
+    });
 
+    return holdCounts;
+  },
+  async getHoldsByUser(userId: number) {
+    const holds = await prisma.$queryRaw<SeatHold[]>`
+      SELECT * FROM SeatHold
+      WHERE heldBy = ${userId} AND expiresAt > ${new Date()}
+    `;
+    return holds;
+  },
+  async getHoldsByTicketGroup(ticketGroupId: number) {
+    const holds = await prisma.$queryRaw<SeatHold[]>`
+      SELECT * FROM SeatHold
+      WHERE ticketGroupId = ${ticketGroupId} AND expiresAt > ${new Date()}
+    `;
     return holds;
   },
 

@@ -29,14 +29,49 @@ export const createSeatHolds = async (
     );
 
     return res.status(201).json(holds);
-  } catch (error: any) {
-    if (
-      error.message.includes("not found") ||
-      error.message.includes("already sold") ||
-      error.message.includes("do not exist")
-    ) {
+  } catch (error: unknown) {
+    if (error instanceof Error) {
       return res.status(400).json({ message: error.message });
     }
+
+    next(error);
+  }
+};
+
+export const getSeatHoldsByUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = (req as any).user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const holds = await seatHoldService.getHoldsByUser(userId);
+
+    return res.json(holds);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSeatHoldsByTicketGroup = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const ticketGroupId = Number(req.params.ticketGroupId);
+    if (isNaN(ticketGroupId)) {
+      return res.status(400).json({ message: "Invalid ticketGroupId" });
+    }
+
+    const holds = await seatHoldService.getHoldsByTicketGroup(ticketGroupId);
+
+    return res.json(holds);
+  } catch (error) {
     next(error);
   }
 };
