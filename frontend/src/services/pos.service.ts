@@ -8,6 +8,10 @@ export const posService = {
     const response = await axiosInstance.get(`/ticket-groups/${ticketGroupId}/layout`);
     return response.data;
   },
+  async getSeatHoldsByTicketGroup(ticketGroupId: number): Promise<SeatHold[]> {
+    const response = await axiosInstance.get(`/seat-holds/by-ticket-group/${ticketGroupId}`);
+    return response.data;
+  },
 
   async createSeatHolds(data: CreateSeatHoldRequest): Promise<SeatHold[]> {
     const response = await axiosInstance.post("/seat-holds", data);
