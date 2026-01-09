@@ -1,5 +1,7 @@
 import jwt from "jsonwebtoken";
 import { prisma } from "../lib/primsa.ts";
+import type { Event, Ticket, TicketGroup } from "../generated/prisma/index.js";
+import { group } from "node:console";
 
 const QR_SECRET = process.env.QR_SECRET || process.env.JWT_SECRET;
 if (!QR_SECRET) throw new Error("QR_SECRET or JWT_SECRET not set");
@@ -82,13 +84,72 @@ export const qrTokenService = {
     }
 
     // 2. Fetch ticket from database
-    const ticket = await prisma.ticket.findUnique({
-      where: { id: decodedToken.ticketId },
-      include: {
-        ticketGroup: { include: { event: true } },
-        orderItem: true,
-      },
-    });
+    const ticketsOnly = await prisma.$queryRaw<Ticket[]>`
+      SELECT * FROM Ticket
+      WHERE id = ${decodedToken.ticketId}
+    `;
+
+    if (ticketsOnly.length === 0) {
+      return {
+        success: false,
+        message: "Ticket not found",
+      };
+    }
+
+    const ticketOnly = ticketsOnly[0];
+    if (ticketOnly === undefined) {
+      return {
+        success: false,
+        message: "Ticket not found",
+      };
+    }
+
+    const ticketGroupsOnly = await prisma.$queryRaw<TicketGroup[]>`
+      SELECT * FROM TicketGroup
+      WHERE id = ${decodedToken.ticketGroupId}
+    `;
+
+    if (ticketGroupsOnly.length === 0) {
+      return {
+        success: false,
+        message: "Ticket not found",
+      };
+    }
+    const ticketGroupOnly = ticketGroupsOnly[0];
+    if (ticketGroupOnly === undefined) {
+      return {
+        success: false,
+        message: "Ticket not found",
+      };
+    }
+
+    const eventsOnly = await prisma.$queryRaw<Event[]>`
+      SELECT * FROM Event
+      WHERE id = ${ticketGroupOnly.eventId}
+    `;
+    if (eventsOnly.length === 0) {
+      return {
+        success: false,
+        message: "Ticket not found",
+      };
+    }
+    const eventOnly = eventsOnly[0];
+    if (eventOnly === undefined) {
+      return {
+        success: false,
+        message: "Ticket not found",
+      };
+    }
+
+
+    const ticket: Ticket & {
+      ticketGroup: TicketGroup & {
+        event: Event;
+      };
+    } = {
+      ...ticketOnly,
+      ticketGroup: { ...ticketGroupOnly, event: eventOnly },
+    };
 
     if (!ticket) {
       return {
@@ -124,27 +185,22 @@ export const qrTokenService = {
     }
 
     // 6. Update ticket with validation
-    const updatedTicket = await prisma.ticket.update({
-      where: { id: ticket.id },
-      data: {
-        validatedAt: new Date(),
-        validatedById: validatorUserId,
-        status: "USED",
-      },
-      include: {
-        ticketGroup: { include: { event: true } },
-      },
-    });
-
+    await prisma.$executeRaw`
+      UPDATE Ticket
+      SET validatedAt = ${new Date()},
+          validatedById = ${validatorUserId},
+          status = 'USED'
+      WHERE id = ${ticket.id}
+    `;
     return {
       success: true,
       message: "Ticket validated successfully",
       ticketData: {
-        ticketId: updatedTicket.id,
-        seatNumber: updatedTicket.seatNumber,
-        eventName: updatedTicket.ticketGroup.event.name,
-        groupName: updatedTicket.ticketGroup.name,
-        validatedAt: updatedTicket.validatedAt,
+        ticketId: ticket.id,
+        groupName: ticket.ticketGroup.name,
+        eventName: ticket.ticketGroup.event.name,
+        seatNumber: ticket.seatNumber,
+        validatedAt: new Date(),
       },
     };
   },
