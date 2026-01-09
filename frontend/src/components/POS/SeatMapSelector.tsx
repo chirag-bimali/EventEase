@@ -10,7 +10,7 @@ interface SeatMapSelectorProps {
 }
 
 export const SeatMapSelector = ({ ticketGroup, cart, seatHolds, onBack }: SeatMapSelectorProps) => {
-  const { getSeatLayout, createHolds, loading, error } = usePOS();
+  const { getSeatLayout, createHolds, loading, error, getSeatHoldsByTicketGroup } = usePOS();
   const [layout, setLayout] = useState<SeatLayout | null>(null);
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
 
@@ -18,6 +18,7 @@ export const SeatMapSelector = ({ ticketGroup, cart, seatHolds, onBack }: SeatMa
     const loadLayout = async () => {
       const data = await getSeatLayout(ticketGroup.id);
       if (data) {
+        console.log("Loaded seat layout:", data);
         setLayout(data);
       }
     };
@@ -46,7 +47,8 @@ export const SeatMapSelector = ({ ticketGroup, cart, seatHolds, onBack }: SeatMa
     try {
 
       // Create holds for selected seats
-      const holds = await createHolds(ticketGroup.id, selectedSeats, 10);
+      await createHolds(ticketGroup.id, selectedSeats, 10);
+      const holds = await getSeatHoldsByTicketGroup(ticketGroup.id);
     
       if (holds) {
         seatHolds.addHolds(holds, ticketGroup.id, selectedSeats);
