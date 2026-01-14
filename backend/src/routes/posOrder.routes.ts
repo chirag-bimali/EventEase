@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { createPosOrder, confirmOrderPayment, getOrder, getAllOrders, getSalesStats, refundOrder, deleteOrder } from "../controllers/posOrder.controller.ts";
 import { authMiddleware } from "../middlewares/auth.middleware.ts";
+import { adminAuthMiddleware } from "../middlewares/adminAuth.middleware.ts";
 
 export const posOrderRouter = Router();
 
@@ -21,7 +22,7 @@ posOrderRouter.post("/", authMiddleware, createPosOrder);
 posOrderRouter.patch("/:orderId/confirm", authMiddleware, confirmOrderPayment);
 
 // Refund order
-posOrderRouter.patch("/:orderId/refund", authMiddleware, refundOrder);
+posOrderRouter.patch("/:orderId/refund", authMiddleware, adminAuthMiddleware, refundOrder);
 
 // Delete order (only pending/failed)
-posOrderRouter.delete("/:orderId", authMiddleware, deleteOrder);
+posOrderRouter.delete("/:orderId", authMiddleware, adminAuthMiddleware, deleteOrder);

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Edit, Trash2 } from "lucide-react";
 import type { TicketGroup, TicketGroupAvailability } from "../types/ticketGroup.types";
 import { ticketGroupService } from "../services/ticketGroup.service";
+import { useAuth } from "../hooks/useAuth";
 
 interface TicketGroupCardProps {
   ticketGroup: TicketGroup;
@@ -14,8 +15,12 @@ export const TicketGroupCard = ({
   onEdit,
   onDelete,
 }: TicketGroupCardProps) => {
+  const { role } = useAuth();
   const [availability, setAvailability] = useState<TicketGroupAvailability | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // roleId 1 is typically admin
+  const isAdmin = role === 1;
 
   useEffect(() => {
     const fetchAvailability = async () => {
@@ -55,22 +60,24 @@ export const TicketGroupCard = ({
             {getAvailabilityText()}
           </p>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => onEdit(ticketGroup)}
-            className="p-2 hover:bg-gray-100 rounded transition"
-            title="Edit"
-          >
-            <Edit size={18} className="text-gray-600" />
-          </button>
-          <button
-            onClick={() => onDelete(ticketGroup.id)}
-            className="p-2 hover:bg-red-100 rounded transition"
-            title="Delete"
-          >
-            <Trash2 size={18} className="text-red-600" />
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => onEdit(ticketGroup)}
+              className="p-2 hover:bg-gray-100 rounded transition"
+              title="Edit"
+            >
+              <Edit size={18} className="text-gray-600" />
+            </button>
+            <button
+              onClick={() => onDelete(ticketGroup.id)}
+              className="p-2 hover:bg-red-100 rounded transition"
+              title="Delete"
+            >
+              <Trash2 size={18} className="text-red-600" />
+            </button>
+          </div>
+        )}
       </div>
       <p className="text-lg font-bold text-gray-900">
         $ {typeof ticketGroup.price === "string" ? parseInt(ticketGroup.price) : ticketGroup.price}

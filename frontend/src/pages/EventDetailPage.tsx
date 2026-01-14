@@ -243,12 +243,14 @@ export const EventDetailPage = () => {
               <h2 className="text-xl font-semibold text-gray-900">
                 TICKET GROUP
               </h2>
-              <button
-                onClick={handleAddGroup}
-                className="px-6 py-2 bg-purple-200 text-purple-900 rounded-lg hover:bg-purple-300 transition font-medium"
-              >
-                ADD GROUP
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={handleAddGroup}
+                  className="px-6 py-2 bg-purple-200 text-purple-900 rounded-lg hover:bg-purple-300 transition font-medium"
+                >
+                  ADD GROUP
+                </button>
+              )}
             </div>
 
             {ticketGroupsError && (
@@ -268,21 +270,23 @@ export const EventDetailPage = () => {
       </div>
 
       {/* Modal for Create/Edit Ticket Group */}
-      <TicketGroupModal
-        key={selectedTicketGroup?.id || "newdd"}
-        isOpen={isModalOpen}
-        ticketGroup={selectedTicketGroup}
-        eventId={event.id}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedTicketGroup(undefined);
-        }}
-        onSubmit={handleModalSubmit}
-        loading={ticketGroupsLoading}
-      />
+      {isAdmin && (
+        <TicketGroupModal
+          key={selectedTicketGroup?.id || "newdd"}
+          isOpen={isModalOpen}
+          ticketGroup={selectedTicketGroup}
+          eventId={event.id}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedTicketGroup(undefined);
+          }}
+          onSubmit={handleModalSubmit}
+          loading={ticketGroupsLoading}
+        />
+      )}
 
       {/* Modal for Edit Event */}
-      {event && (
+      {event && isAdmin && (
         <EventEditModal
           event={event as EventWithRelations}
           isOpen={isEditModalOpen}
