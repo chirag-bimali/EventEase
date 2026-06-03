@@ -41,7 +41,41 @@ export const createTicketGroupSchema = z
       }
     }
   });
-export const updateTicketGroupSchema = createTicketGroupSchema.partial();
+
+export const updateTicketGroupSchema = z
+  .object({
+    eventId: z.number().int().positive().optional(),
+    name: z.string().min(1, "Group name is required").optional(),
+    description: z.string().optional(),
+    price: z.number().nonnegative().optional(),
+    seatType: z.enum(["GENERAL", "QUEUE", "SEAT"]).optional(),
+    prefixFormat: z.string().optional(),
+    quantity: z.number().int().nonnegative().optional(),
+    seatingConfig: z.array(seatingRowSchema).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.seatType === "SEAT" && !data.seatingConfig) {
+      ctx.addIssue({
+        code: "invalid_type",
+        expected: "array",
+        received: "undefined",
+        message: "Seating configuration is required for SEAT type",
+      });
+    }
+
+    if (
+      data.seatType &&
+      (data.seatType === "QUEUE" || data.seatType === "GENERAL") &&
+      !data.prefixFormat
+    ) {
+      ctx.addIssue({
+        code: "invalid_type",
+        expected: "string",
+        received: "undefined",
+        message: "Prefix format is required for QUEUE and GENERAL types",
+      });
+    }
+  });
 
 export type SeatingRow = z.infer<typeof seatingRowSchema>;
 export type CreateTicketGroupDTO = z.infer<typeof createTicketGroupSchema>;

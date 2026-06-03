@@ -25,13 +25,18 @@ export default function RegisterPage() {
       await register(username, password, Number(selectedRoleId));
       // After successful registration, user is auto-logged in via AuthContext
       navigate("/dashboard");
-    } catch (err) {
-      console.log("Registration error:", err);
+    } catch {
       setError("Registration failed. Username may already exist.");
     } finally {
       setIsLoading(false);
     }
   };
+  console.log(
+    "Loading roles:",
+    rolesLoading,
+    "Error loading roles:",
+    rolesError,
+  );
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -98,22 +103,25 @@ export default function RegisterPage() {
             {rolesError && (
               <div className="text-xs text-red-600">Failed to load roles</div>
             )}
-            <select
-              id="role"
-              value={selectedRoleId}
-              onChange={(e) => {
-                const val = e.target.value;
-                setSelectedRoleId(val ? Number(val) : "");
-              }}
-              className="w-full px-3 py-2 border-b-2 border-gray-300 focus:border-purple-400 outline-none transition-colors"
-            >
-              <option value="">Select a role</option>
-              {roles.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name.toUpperCase()}
-                </option>
-              ))}
-            </select>
+
+            {!rolesLoading && !rolesError && (
+              <select
+                id="role"
+                value={selectedRoleId}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedRoleId(val ? Number(val) : "");
+                }}
+                className="w-full px-3 py-2 border-b-2 border-gray-300 focus:border-purple-400 outline-none transition-colors"
+              >
+                <option value="">Select a role</option>
+                {roles.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <button

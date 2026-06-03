@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+import axiosInstance from "../lib/axios";
 
 import type {
   User,
@@ -43,19 +43,12 @@ export async function login(
   username: string,
   password: string
 ): Promise<{ token: string }> {
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ username, password }),
+  const response = await axiosInstance.post<LoginResponse>("/auth/login", {
+    username,
+    password,
   });
 
-  if (!response.ok) {
-    throw new Error("Login failed");
-  }
-
-  const data: LoginResponse = await response.json();
+  const data = response.data;
   setToken(data.token);
   return { token: data.token };
 }
@@ -66,20 +59,13 @@ export async function register(
   password: string,
   roleId: number
 ): Promise<{ message: string; userId: number }> {
-  const response = await fetch(`${API_BASE_URL}/auth/register`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ username, password, roleId }),
+  const response = await axiosInstance.post<RegisterResponse>("/auth/register", {
+    username,
+    password,
+    roleId,
   });
 
-  if (!response.ok) {
-    throw new Error("Registration failed");
-  }
-
-  const data: RegisterResponse = await response.json();
-  return data;
+  return response.data;
 }
 
 // Logout

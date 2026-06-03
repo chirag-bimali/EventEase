@@ -1,6 +1,6 @@
 // frontend/src/hooks/useRoles.ts
 import { useEffect, useState } from "react";
-import { getRoles} from "../services/role.service";
+import { getRoles } from "../services/role.service";
 import type { Role } from "../types/role.types";
 
 export function useRoles() {
@@ -13,7 +13,10 @@ export function useRoles() {
     (async () => {
       try {
         const data = await getRoles();
-        if (alive) setRoles(data);
+        console.log("Fetched roles:", data);
+        if (alive) {
+          setRoles(data);
+        }
       } catch (e) {
         if (alive) setError(e instanceof Error ? e.message : String(e));
       } finally {
