@@ -3,6 +3,7 @@ import { eventService } from "../services/event.service";
 import type { CreateEventDTO, Event } from "../types/event.types";
 import { getToken } from "../services/auth.service";
 import axios from "axios";
+import { X } from "lucide-react";
 
 type Props = {
   onClose: () => void;
@@ -119,10 +120,10 @@ export const CreateEventModel = ({ onClose, onCreated }: Props) => {
       <div className="relative w-full max-w-xl rounded-md bg-white shadow-xl">
         <button
           onClick={onClose}
-          className="absolute right-3 top-3 text-sm font-semibold text-purple-700 hover:text-purple-900"
+          className="absolute right-3 top-3 text-sm bg-purple-100 p-3 rounded-lg cursor-pointer font-semibold text-purple-700 hover:text-purple-900"
           aria-label="Close"
         >
-          ×
+          <X className="h-5 w-5" />
         </button>
 
         <form onSubmit={handleSubmit} className="space-y-4 p-8">

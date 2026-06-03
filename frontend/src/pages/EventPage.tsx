@@ -20,7 +20,7 @@ export const EventsPage = () => {
           </h1>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="rounded-sm bg-purple-200 px-5 py-2 text-sm font-semibold uppercase text-purple-800 transition hover:bg-purple-300"
+            className="rounded-sm bg-purple-200 px-5 py-2 text-sm font-semibold uppercase text-purple-800 transition hover:bg-purple-300 cursor-pointer"
           >
             Create New Event
           </button>
