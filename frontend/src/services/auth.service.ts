@@ -1,3 +1,4 @@
+import axios from "axios";
 import axiosInstance from "../lib/axios";
 
 import type {
@@ -21,7 +22,7 @@ export function clearToken(): void {
 
 // Decode JWT to get userId
 function decodeToken(
-  token: string
+  token: string,
 ): { userId: number; iat: number; exp: number; roleId: number } | null {
   try {
     const base64Url = token.split(".")[1];
@@ -30,7 +31,7 @@ function decodeToken(
       atob(base64)
         .split("")
         .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
+        .join(""),
     );
     return JSON.parse(jsonPayload);
   } catch {
@@ -41,29 +42,39 @@ function decodeToken(
 // Login
 export async function login(
   username: string,
-  password: string
+  password: string,
 ): Promise<{ token: string }> {
-  const response = await axiosInstance.post<LoginResponse>("/auth/login", {
-    username,
-    password,
-  });
+  try {
+    const response = await axiosInstance.post<LoginResponse>("/auth/login", {
+      username,
+      password,
+    });
 
-  const data = response.data;
-  setToken(data.token);
-  return { token: data.token };
+    const data = response.data;
+    setToken(data.token);
+    return { token: data.token };
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw error?.response?.data?.message || "Login failed";
+    }
+    throw error instanceof Error ? error.message : new Error("Login failed");
+  }
 }
 
 // Register
 export async function register(
   username: string,
   password: string,
-  roleId: number
+  roleId: number,
 ): Promise<{ message: string; userId: number }> {
-  const response = await axiosInstance.post<RegisterResponse>("/auth/register", {
-    username,
-    password,
-    roleId,
-  });
+  const response = await axiosInstance.post<RegisterResponse>(
+    "/auth/register",
+    {
+      username,
+      password,
+      roleId,
+    },
+  );
 
   return response.data;
 }

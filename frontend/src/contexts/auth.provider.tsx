@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
-import type { AuthProviderProps, AuthContextType, User } from "../types/auth.types";
+import type {
+  AuthProviderProps,
+  AuthContextType,
+  User,
+} from "../types/auth.types";
 import { AuthContext } from "./auth.context";
 
 import * as authService from "../services/auth.service";
@@ -8,6 +12,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<number | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Check token on mount and restore session
@@ -38,21 +43,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setIsAuthenticated(true);
       }
     } catch (error) {
-      console.error("Login failed:", error);
-      throw error;
+      setError(error instanceof Error ? error.message : "Login failed");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const register = async (username: string, password: string, roleId: number) => {
+  const register = async (
+    username: string,
+    password: string,
+    roleId: number,
+  ) => {
     try {
       setIsLoading(true);
       await authService.register(username, password, roleId);
       // Optionally auto-login after registration
       await login(username, password);
     } catch (error) {
-      console.error("Registration failed:", error);
+      setError(error instanceof Error ? error.message : "Registration failed");
       throw error;
     } finally {
       setIsLoading(false);
@@ -63,6 +71,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     authService.logout();
     setUser(null);
     setIsAuthenticated(false);
+    setRole(null);
   };
 
   const value: AuthContextType = {
@@ -70,6 +79,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     role,
     isAuthenticated,
     isLoading,
+    error,
     login,
     register,
     logout,
@@ -77,4 +87,3 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-

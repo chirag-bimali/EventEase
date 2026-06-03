@@ -30,8 +30,12 @@ axiosInstance.interceptors.response.use(
     return response;
   },
   (error: AxiosError) => {
+    const requestPath = error.config?.url ?? "";
+    const isAuthRequest =
+      requestPath.includes("/auth/login") || requestPath.includes("/auth/register");
+
     // Handle 401 Unauthorized - token expired or invalid
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !isAuthRequest) {
       clearToken();
       logout();
       // Redirect to login

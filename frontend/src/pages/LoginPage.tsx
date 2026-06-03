@@ -5,26 +5,14 @@ import { useAuth } from "../hooks/useAuth";
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { login, error, isLoading } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setIsLoading(true);
-
-    try {
-      await login(username, password);
-      navigate("/dashboard");
-    } catch (err) {
-      console.log("Login error:", err);
-      setError("Invalid username or password");
-    } finally {
-      setIsLoading(false);
-    }
+    await login(username, password);
+    navigate("/dashboard");
   };
 
   return (

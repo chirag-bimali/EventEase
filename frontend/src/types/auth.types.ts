@@ -12,6 +12,7 @@ export interface AuthContextType {
   role: number | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  error: string | null;
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, password: string, roleId: number) => Promise<void>;
   logout: () => void;
