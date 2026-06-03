@@ -3,7 +3,7 @@ import type {
   CreateEventDTO,
   UpdateEventDTO,
 } from "../schemas/event.schema.ts";
-import { SeatType, TicketStatus } from "../generated/prisma/client.js";
+import { TicketStatus } from "../generated/prisma/client.js";
 import type { TicketGroup, Event, Ticket } from "../generated/prisma/client.js";
 
 type TicketGroupWithTickets = TicketGroup & {
@@ -34,46 +34,7 @@ export const eventService = {
       },
     });
   },
-  async getAllEvents() {
-    // Get all events with their ticket groups and only AVAILABLE tickets
-    const events = await prisma.$queryRaw<Event[]>`
-    SELECT * FROM Event
-    ORDER BY 
-      CASE WHEN startTime IS NULL THEN 1 ELSE 0 END,
-      startTime ASC
-    `;
-    // Get ticket groups and available tickets for each event
-    const ticketGroups = await prisma.$queryRaw<TicketGroup[]>`
-      SELECT * FROM TicketGroup
-      WHERE eventId IN (${events.map((e) => e.id)})
-    `;
-    const ticketsAvailable = await prisma.$queryRaw<Ticket[]>`
-      SELECT * FROM Ticket
-      WHERE ticketGroupId IN (${ticketGroups.map((tg) => tg.id)})
-        AND status = ${TicketStatus.AVAILABLE}
-    `;
-    
-    // Attach tickets to their respective ticket groups
-    const ticketGroupsWithTickets: TicketGroupWithTickets[] = ticketGroups.map(
-      (tg) => ({
-        ...tg,
-        tickets: ticketsAvailable.filter(
-          (ticket) => ticket.ticketGroupId === tg.id
-        ),
-      })
-    );
-    
-    // Attach ticket groups to events
-    const eventsWithTicketGroups: EventWithTicketGroups[] = events.map(
-      (event) => ({
-        ...event,
-        ticketGroups: ticketGroupsWithTickets.filter(
-          (tg) => tg.eventId === event.id
-        ),
-      })
-    );
-    return eventsWithTicketGroups;
-
+  async getAllEvents(): Promise<EventWithTicketGroups[]> {
     return await prisma.event.findMany({
       include: {
         ticketGroups: {
@@ -83,64 +44,31 @@ export const eventService = {
             },
           },
         },
+        createdBy: {
+          select: { id: true, username: true },
+        },
       },
-      orderBy: { startTime: "asc" },
+      orderBy: [
+        {
+          startTime: {
+            sort: "asc",
+            nulls: "last",
+          },
+        },
+        { id: "asc" },
+      ],
     });
   },
 
-  async getEventById(id: number) {
-    
-    // Step 1: Get the specific event
-    const events = await prisma.$queryRaw<Event[]>`
-      SELECT * FROM Event
-      WHERE id = ${id}
-    `;
-
-    if (events.length === 0) {
-      return null;
-    }
-
-    const resultsWithRelations: EventWithTicketGroups[] = [];
-
-    // Step 2: For each event, get its ticket groups
-    for (const event of events) {
-      const ticketGroups = await prisma.$queryRaw<TicketGroup[]>`
-        SELECT * FROM TicketGroup
-        WHERE eventId = ${event.id}
-      `;
-
-      const ticketGroupsWithTickets: TicketGroupWithTickets[] = [];
-
-      // Step 3: For each ticket group, get only AVAILABLE tickets
-      for (const ticketGroup of ticketGroups) {
-        const tickets = await prisma.$queryRaw<Ticket[]>`
-          SELECT * FROM Ticket
-          WHERE ticketGroupId = ${ticketGroup.id}
-            AND status = ${TicketStatus.AVAILABLE}
-        `;
-
-        // Create properly typed object
-        ticketGroupsWithTickets.push({
-          ...ticketGroup,
-          tickets: tickets,
-        });
-      }
-
-      // Create properly typed event with relations
-      resultsWithRelations.push({
-        ...event,
-        ticketGroups: ticketGroupsWithTickets,
-      });
-    }
-
-    return resultsWithRelations[0];
-
+  async getEventById(id: number): Promise<EventWithTicketGroups | null> {
     return await prisma.event.findUnique({
       where: { id },
       include: {
         ticketGroups: {
           include: {
-            tickets: true,
+            tickets: {
+              where: { status: TicketStatus.AVAILABLE },
+            },
           },
         },
         createdBy: {
@@ -178,7 +106,7 @@ export const eventService = {
 
     // Check if tickets have been sold
     const hasSoldTickets = event.ticketGroups.some(
-      (tg) => tg.tickets.length > 0
+      (tg) => tg.tickets.length > 0,
     );
     if (hasSoldTickets) {
       throw new Error("Cannot edit event with sold or reserved tickets");
