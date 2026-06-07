@@ -19,3 +19,4 @@ yarn-error.log*
 /src/generated/prisma
 /uploads
 /generated/prisma
+temp/

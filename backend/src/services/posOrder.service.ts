@@ -323,7 +323,7 @@ export const posOrderService = {
       failedOrders,
       totalRevenue,
       paidRevenue
-    ] = await Promise.all([
+    ] = await prisma.$transaction([
       prisma.posOrder.count({ where }),
       prisma.posOrder.count({ where: { ...where, paymentStatus: 'PAID' } }),
       prisma.posOrder.count({ where: { ...where, paymentStatus: 'PENDING' } }),

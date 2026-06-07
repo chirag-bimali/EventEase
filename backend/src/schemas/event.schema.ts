@@ -1,4 +1,40 @@
 import z from "zod";
+import { EventStatus } from "../generated/prisma/index.js";
+
+const EventStatusEnum = z.enum(Object.values(EventStatus));
+
+export const getAllEventsQuerySchema = z
+  .object({
+    status: z
+      .union([EventStatusEnum, z.array(EventStatusEnum)])
+      .transform((val) => (Array.isArray(val) ? val : [val]))
+      .optional(),
+    statusNot: z
+      .union([EventStatusEnum, z.array(EventStatusEnum)])
+      .transform((val) => (Array.isArray(val) ? val : [val]))
+      .optional(),
+    name: z.string().min(1).optional(),
+    startFrom: z.coerce.date().optional(),
+    startTo: z.coerce.date().optional(),
+  })
+  .refine((data) => !(data.status && data.statusNot), {
+    message: "Cannot use both status and statusNot at the same time",
+    path: ["status"],
+  })
+  .refine(
+    (data) => {
+      if (data.startFrom && data.startTo) {
+        return data.startFrom <= data.startTo;
+      }
+      return true;
+    },
+    {
+      message: "startFrom must be before or equal to startTo",
+      path: ["startFrom"],
+    },
+  );
+
+export type GetAllEventsQuery = z.infer<typeof getAllEventsQuerySchema>;
 
 // Transform empty strings to undefined for optional DateTime fields
 const optionalDateTime = z
@@ -14,10 +50,7 @@ export const createEventSchema = z
     startTime: optionalDateTime,
     endTime: optionalDateTime,
     imageUrl: z.string().optional(),
-    status: z
-      .enum(["DRAFT", "PUBLISHED", "CANCELLED", "SOLD_OUT"])
-      .optional()
-      .default("DRAFT"),
+    status: EventStatusEnum.optional().default("DRAFT"),
   })
   .superRefine((data, ctx) => {
     const hasStart = data.startTime !== undefined;
@@ -47,7 +80,7 @@ export const createEventSchema = z
           path: ["endTime"],
           message: "endTime must be greater than startTime",
           code: "custom",
-        })
+        });
       }
     }
   });
@@ -60,7 +93,7 @@ export const updateEventSchema = z
     startTime: optionalDateTime,
     endTime: optionalDateTime,
     imageUrl: z.string().optional(),
-    status: z.enum(["DRAFT", "PUBLISHED", "CANCELLED", "SOLD_OUT"]).optional(),
+    status: EventStatusEnum.optional(),
   })
   .refine(
     (data) => {
@@ -73,7 +106,7 @@ export const updateEventSchema = z
     {
       message: "End time must be after start time",
       path: ["endTime"],
-    }
+    },
   );
 
 export type CreateEventDTO = z.infer<typeof createEventSchema>;

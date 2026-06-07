@@ -262,7 +262,7 @@ export const ticketService = {
   async getTicketStats(eventId?: number) {
     const where: any = eventId ? { ticketGroup: { eventId } } : {};
 
-    const [total, sold, reserved, available] = await Promise.all([
+    const [total, sold, reserved, available] = await prisma.$transaction([
       prisma.ticket.count({ where }),
       prisma.ticket.count({ where: { ...where, status: TicketStatus.SOLD } }),
       prisma.ticket.count({

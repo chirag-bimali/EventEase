@@ -1,4 +1,5 @@
 import multer from "multer";
+import fs from "fs";
 import path from "path";
 import type { Request } from "express";
 
@@ -6,10 +7,16 @@ export interface MulterRequest extends Request {
   file?: Express.Multer.File;
 }
 
+const eventsImageUploadDir = path.resolve(
+  process.env.EVENTS_IMAGE_UPLOAD_PATH || "temp/uploads/events",
+);
+
+fs.mkdirSync(eventsImageUploadDir, { recursive: true });
+
 // Configure storage
 const storage = multer.diskStorage({
   destination: (req: Request, file: Express.Multer.File, cb) => {
-    cb(null, "uploads/"); // Store in uploads folder
+    cb(null, eventsImageUploadDir); // Store event images in the resolved upload folder
   },
   filename: (req: Request, file: Express.Multer.File, cb) => {
     // Generate unique filename: timestamp-randomstring-originalname
@@ -22,14 +29,25 @@ const storage = multer.diskStorage({
 const fileFilter = (
   req: Request,
   file: Express.Multer.File,
-  cb: multer.FileFilterCallback
+  cb: multer.FileFilterCallback,
 ) => {
-  const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
-  
+  const allowedMimeTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/jpg",
+    "image/gif",
+    "image/avif",
+  ];
+
   if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error("Invalid file type. Only JPEG, PNG, and WebP images are allowed."));
+    cb(
+      new Error(
+        "Invalid file type. Only JPEG, PNG, WebP, GIF, and AVIF images are allowed.",
+      ),
+    );
   }
 };
 

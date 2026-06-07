@@ -1,6 +1,7 @@
 import { prisma } from "../lib/primsa.ts";
 import type {
   CreateEventDTO,
+  GetAllEventsQuery,
   UpdateEventDTO,
 } from "../schemas/event.schema.ts";
 import { TicketStatus } from "../generated/prisma/client.js";
@@ -34,7 +35,50 @@ export const eventService = {
       },
     });
   },
-  async getAllEvents(): Promise<EventWithTicketGroups[]> {
+  async getAllEvents(
+    filters: GetAllEventsQuery = {},
+  ): Promise<EventWithTicketGroups[]> {
+    const { status, statusNot, name, startFrom, startTo } = filters;
+
+    return await prisma.event.findMany({
+      where: {
+        ...(status && { status: { in: status } }),
+        ...(statusNot && { status: { notIn: statusNot } }),
+        ...(name && {
+          name: { contains: name }
+        }),
+        ...(startFrom || startTo
+          ? {
+              startTime: {
+                ...(startFrom && { gte: startFrom }),
+                ...(startTo && { lte: startTo }),
+              },
+            }
+          : {}),
+      },
+      include: {
+        ticketGroups: {
+          include: {
+            tickets: {
+              where: { status: TicketStatus.AVAILABLE },
+            },
+          },
+        },
+        createdBy: {
+          select: { id: true, username: true },
+        },
+      },
+      orderBy: [
+        {
+          startTime: {
+            sort: "asc",
+            nulls: "last",
+          },
+        },
+        { id: "asc" },
+      ],
+    });
+
     return await prisma.event.findMany({
       include: {
         ticketGroups: {

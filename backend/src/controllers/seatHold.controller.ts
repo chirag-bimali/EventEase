@@ -33,7 +33,8 @@ export const createSeatHolds = async (
     if (
       error.message.includes("not found") ||
       error.message.includes("already sold") ||
-      error.message.includes("do not exist")
+      error.message.includes("do not exist") ||
+      error.message.includes("held by another user")
     ) {
       return res.status(400).json({ message: error.message });
     }

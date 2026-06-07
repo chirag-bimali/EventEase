@@ -2,13 +2,13 @@ import type { Request, Response, NextFunction } from "express";
 import * as ticketGroupService from "../services/ticketGroup.service.ts";
 import {
   createTicketGroupSchema,
-  updateTicketGroupSchema
+  updateTicketGroupSchema,
 } from "../schemas/ticketGroup.schema.ts";
 // Ticket Group Controllers
 export const createTicketGroup = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const parsed = createTicketGroupSchema.safeParse(req.body);
@@ -19,7 +19,10 @@ export const createTicketGroup = async (
       });
     }
 
-    const ticketGroup = await ticketGroupService.ticketGroupService.createTicketGroup(parsed.data);
+    const ticketGroup =
+      await ticketGroupService.ticketGroupService.createTicketGroup(
+        parsed.data,
+      );
     return res.status(201).json(ticketGroup);
   } catch (error) {
     next(error);
@@ -29,7 +32,7 @@ export const createTicketGroup = async (
 export const getTicketGroupsByEvent = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     if (!req.params.eventId) {
@@ -40,7 +43,10 @@ export const getTicketGroupsByEvent = async (
       return res.status(400).json({ message: "Invalid event ID" });
     }
 
-    const ticketGroups = await ticketGroupService.ticketGroupService.getTicketGroupsByEvent(eventId);
+    const ticketGroups =
+      await ticketGroupService.ticketGroupService.getTicketGroupsByEvent(
+        eventId,
+      );
     return res.json(ticketGroups);
   } catch (error) {
     next(error);
@@ -50,7 +56,7 @@ export const getTicketGroupsByEvent = async (
 export const updateTicketGroup = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   if (!req.params.id) {
     return res.status(400).json({ message: "Ticket group ID is required" });
@@ -69,9 +75,13 @@ export const updateTicketGroup = async (
     }
 
     const filteredData = Object.fromEntries(
-      Object.entries(parsed.data).filter(([, value]) => value !== undefined)
+      Object.entries(parsed.data).filter(([, value]) => value !== undefined),
     );
-    const ticketGroup = await ticketGroupService.ticketGroupService.updateTicketGroup(id, filteredData);
+    const ticketGroup =
+      await ticketGroupService.ticketGroupService.updateTicketGroup(
+        id,
+        filteredData,
+      );
     return res.json(ticketGroup);
   } catch (error) {
     next(error);
@@ -81,7 +91,7 @@ export const updateTicketGroup = async (
 export const deleteTicketGroup = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     if (!req.params.id) {
@@ -102,7 +112,7 @@ export const deleteTicketGroup = async (
 export const getTicketGroupAvailability = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     if (!req.params.id) {
@@ -113,7 +123,10 @@ export const getTicketGroupAvailability = async (
       return res.status(400).json({ message: "Invalid ticket group ID" });
     }
 
-    const availability = await ticketGroupService.ticketGroupService.getTicketGroupAvailability(id);
+    const availability =
+      await ticketGroupService.ticketGroupService.getTicketGroupAvailability(
+        id,
+      );
     return res.json(availability);
   } catch (error) {
     next(error);
@@ -123,18 +136,22 @@ export const getTicketGroupAvailability = async (
 export const getSeatLayout = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     if (!req.params.id) {
       return res.status(400).json({ message: "Ticket group ID is required" });
     }
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
+
+    const ticketGroupId = parseInt(
+      (Array.isArray(req.params.id) ? req.params.id[0] : req.params.id) || "",
+    );
+    if (isNaN(ticketGroupId)) {
       return res.status(400).json({ message: "Invalid ticket group ID" });
     }
 
-    const layout = await ticketGroupService.ticketGroupService.getSeatLayout(id);
+    const layout =
+      await ticketGroupService.ticketGroupService.getSeatLayout(ticketGroupId);
     return res.json(layout);
   } catch (error) {
     next(error);

@@ -25,6 +25,7 @@ model User {
   tickets   Ticket[]  @relation("UserTickets")
 
   validatedTickets Ticket[] @relation("ValidatedTickets")
+  reservedTickets  Ticket[] @relation("ReservedTickets")
 
   posOrders       PosOrder[]
   seatHolds       SeatHold[]
@@ -97,6 +98,13 @@ model Ticket {
   ticketGroup   TicketGroup @relation("TicketGroupTickets",fields: [ticketGroupId], references: [id], onDelete: Cascade)
   seatNumber    String   // For SEAT: "A1", "B5", For QUEUE: "B1", "B2"
   status        TicketStatus @default(AVAILABLE)
+
+  reservedAt   DateTime?
+  reservedById Int?
+  reservedBy   User?    @relation("ReservedTickets", fields: [reservedById], references: [id])
+
+
+
   purchasedById Int?
   purchasedBy   User?    @relation("UserTickets", fields: [purchasedById], references: [id])
   purchasedAt   DateTime?
@@ -122,7 +130,7 @@ enum EventStatus {
   DRAFT
   PUBLISHED
   CANCELLED
-  SOLD_OUT
+  SOLD
 }
 
 enum SeatType {

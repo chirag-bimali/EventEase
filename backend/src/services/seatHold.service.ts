@@ -1,3 +1,4 @@
+import { TicketStatus } from "../generated/prisma/index.js";
 import { prisma } from "../lib/primsa.ts";
 import type { SeatingRow } from "../schemas/ticketGroup.schema.ts";
 
@@ -6,7 +7,7 @@ export const seatHoldService = {
     ticketGroupId: number,
     seatNumbers: string[],
     userId: number,
-    durationMinutes: number = 10
+    durationMinutes: number = 10,
   ) {
     // Validate ticket group exists
     const ticketGroup = await prisma.ticketGroup.findUnique({
@@ -23,7 +24,7 @@ export const seatHoldService = {
         throw new Error("Ticket group has no seating configuration");
 
       const seatingConfig = JSON.parse(
-        ticketGroup.seatingConfig
+        ticketGroup.seatingConfig,
       ) as SeatingRow[];
 
       // Build seat map from seating config
@@ -38,7 +39,7 @@ export const seatHoldService = {
       const invalidSeats = seatNumbers.filter((seat) => !validSeats.has(seat));
       if (invalidSeats.length > 0) {
         throw new Error(
-          `Invalid seat numbers requested: ${invalidSeats.join(", ")}`
+          `Invalid seat numbers requested: ${invalidSeats.join(", ")}`,
         );
       }
 
@@ -48,15 +49,15 @@ export const seatHoldService = {
         .filter(
           (ticket) =>
             seatNumbers.includes(ticket.seatNumber) &&
-            (ticket.status === "SOLD" || ticket.status === "RESERVED")
+            (ticket.status === "SOLD" || ticket.status === "RESERVED"),
         )
         .map((ticket) => ticket.seatNumber);
 
       if (unavailableSeats.length > 0) {
         throw new Error(
           `The following seats are already sold or reserved: ${unavailableSeats.join(
-            ", "
-          )}`
+            ", ",
+          )}`,
         );
       }
 
@@ -76,8 +77,8 @@ export const seatHoldService = {
         const heldSeats = existingHolds.map((hold) => hold.seatNumber);
         throw new Error(
           `The following seats are currently held by another user: ${heldSeats.join(
-            ", "
-          )}`
+            ", ",
+          )}`,
         );
       }
     } else {
@@ -89,34 +90,55 @@ export const seatHoldService = {
         throw new Error(
           `Seats ${soldSeats
             .map((t) => t.seatNumber)
-            .join(", ")} are already sold`
+            .join(", ")} are already sold`,
         );
       }
     }
 
     const expiresAt = new Date(Date.now() + durationMinutes * 60000);
 
-    // ✅ Create SeatHold records (NO ticket creation yet)
-    const holds = await Promise.all(
-      seatNumbers.map((seatNumber) =>
-        prisma.seatHold.create({
-          data: {
-            ticketGroupId,
-            seatNumber,
-            heldBy: userId,
-            expiresAt,
-          },
-        })
-      )
-    );
+    // Create SeatHold records in one batch so the pool only needs one connection.
 
-    return holds;
+    await prisma.$transaction(async (tx) => {
+      return Promise.all(
+        seatNumbers.map(async (seatNumber) => {
+          const hold = await tx.seatHold.create({
+            data: {
+              ticketGroupId,
+              seatNumber,
+              heldBy: userId,
+              expiresAt,
+            },
+          });
+
+          const ticket = await tx.ticket.upsert({
+            where: {
+              ticketGroupId_seatNumber: {
+                ticketGroupId,
+                seatNumber,
+              },
+            },
+            update: {
+              status: TicketStatus.RESERVED,
+            },
+            create: {
+              ticketGroupId,
+              seatNumber,
+              status: TicketStatus.RESERVED,
+              createdAt: new Date(),
+            },
+          });
+
+          return { hold, ticket };
+        }),
+      );
+    });
   },
 
   async releaseHolds(
     ticketGroupId: number,
     seatNumbers: string[],
-    userId: number
+    userId: number,
   ) {
     // Verify user owns these holds (optional security check)
     const holds = await prisma.seatHold.findMany({

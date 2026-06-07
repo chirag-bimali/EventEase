@@ -183,6 +183,7 @@ export const ticketGroupService = {
       },
     });
 
+
     if (!ticketGroup) {
       throw new Error("Ticket group not found");
     }
@@ -204,6 +205,8 @@ export const ticketGroupService = {
     for (const ticket of ticketGroup.tickets) {
       seatStatusMap.set(ticket.seatNumber, ticket.status);
     }
+
+    
 
     // Build response with rows and seats
     const rows = seatingConfig.map((rowConfig) => {
