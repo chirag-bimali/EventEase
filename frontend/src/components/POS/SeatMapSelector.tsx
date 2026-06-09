@@ -1,11 +1,14 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import axios from "axios";
 import type {
   TicketGroup,
   SeatInfo,
   SeatLayoutRow,
   SeatStatus,
 } from "../../types/ticketGroup.types";
-import { useTicketGroups } from "../../hooks/useTicketGroups";
+import { posService } from "../../services/pos.service";
+import { ticketService } from "../../services/ticket.service";
+import { useAuth } from "../../hooks/useAuth";
 
 interface SeatMapSelectorProps {
   ticketGroup: TicketGroup;
@@ -13,49 +16,183 @@ interface SeatMapSelectorProps {
   onBack: () => void;
 }
 
+const LAYOUT_POLL_MS = 5000;
+
 export const SeatMapSelector = ({
   ticketGroup,
+  cart,
   onBack,
 }: SeatMapSelectorProps) => {
-  const { getSeatLayout, error, loading } = useTicketGroups();
+  const { user } = useAuth();
+  const userId = user?.id;
 
-  const layout = useMemo<SeatLayoutRow[] | null>(() => {
-    return getSeatLayout(ticketGroup);
-  }, [getSeatLayout, ticketGroup]);
+  const existingCartItem = cart.cart.find(
+    (item) => item.ticketGroup.id === ticketGroup.id,
+  );
+  const cartSeats = existingCartItem?.seatNumbers ?? [];
 
-  const [selectedSeats, setSelectedSeats] = useState<SeatInfo[]>([]);
+  const [selectedSeats, setSelectedSeats] = useState<string[]>(() => [
+    ...cartSeats,
+  ]);
+  const [layout, setLayout] = useState<SeatLayoutRow[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [updatingSeat, setUpdatingSeat] = useState<string | null>(null);
+  const selectedSeatsRef = useRef(selectedSeats);
+  const cartSeatsRef = useRef(cartSeats);
 
-  if (!layout) {
-    return;
-  }
+  selectedSeatsRef.current = selectedSeats;
+  cartSeatsRef.current = cartSeats;
 
-  const handleSeatClick = (seat: SeatInfo) => {
-    if (seat.status === "SOLD" || seat.status === "RESERVED") {
-      return; // Cannot select sold or reserved seats
-    }
-    const isSelected = selectedSeats.some(
-      (s) => s.seatNumber === seat.seatNumber,
+  const loadLayout = useCallback(
+    async (showLoader = false) => {
+      if (showLoader) setLoading(true);
+      setError(null);
+      try {
+        const data = await posService.getSeatLayout(ticketGroup.id);
+        setLayout(data.rows);
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "Failed to load seat map";
+        setError(message);
+      } finally {
+        if (showLoader) setLoading(false);
+      }
+    },
+    [ticketGroup.id],
+  );
+
+  useEffect(() => {
+    loadLayout(true);
+    const interval = setInterval(() => loadLayout(false), LAYOUT_POLL_MS);
+    return () => clearInterval(interval);
+  }, [loadLayout]);
+
+  const releaseSeats = async (seatNumbers: string[]) => {
+    if (!seatNumbers.length) return;
+    await ticketService.updateSeatStatus(
+      ticketGroup.id,
+      seatNumbers,
+      "AVAILABLE",
     );
-    if (isSelected) {
-      setSelectedSeats((prev) =>
-        prev.filter((s) => s.seatNumber !== seat.seatNumber),
-      );
+  };
+
+  const isSelectedSeat = (seatNumber: string) =>
+    selectedSeats.includes(seatNumber);
+
+  const isOwnReservation = (seat: SeatInfo) =>
+    userId != null &&
+    seat.reservedById != null &&
+    Number(seat.reservedById) === Number(userId);
+
+  const canToggleSeat = (seat: SeatInfo) => {
+    if (seat.status === "SOLD" || seat.status === "USED") return false;
+    if (isSelectedSeat(seat.seatNumber)) return true;
+    if (seat.status === "AVAILABLE") return true;
+    if (seat.status === "RESERVED" && isOwnReservation(seat)) return true;
+    return false;
+  };
+
+  const syncCartSeats = (seatNumbers: string[]) => {
+    if (seatNumbers.length > 0) {
+      cart.addItem({ ticketGroup, seatNumbers });
     } else {
-      setSelectedSeats((prev) => [...prev, seat]);
+      cart.removeItem(ticketGroup.id);
     }
   };
 
-  const handleConfirmSelection = async () => {};
+  const handleSeatClick = async (seat: SeatInfo) => {
+    if (!canToggleSeat(seat) || updatingSeat) {
+      return;
+    }
 
-  const handleClearSelection = () => {
-    setSelectedSeats([]);
+    const isSelected = isSelectedSeat(seat.seatNumber);
+    setUpdatingSeat(seat.seatNumber);
+
+    try {
+      if (isSelected) {
+        await releaseSeats([seat.seatNumber]);
+        setSelectedSeats((prev) =>
+          prev.filter((s) => s !== seat.seatNumber),
+        );
+        if (cartSeats.includes(seat.seatNumber)) {
+          syncCartSeats(
+            cartSeats.filter((s) => s !== seat.seatNumber),
+          );
+        }
+      } else {
+        await ticketService.updateSeatStatus(
+          ticketGroup.id,
+          [seat.seatNumber],
+          "RESERVED",
+        );
+        setSelectedSeats((prev) => [...prev, seat.seatNumber]);
+      }
+      await loadLayout(false);
+    } catch (err: unknown) {
+      let message = "Failed to update seat";
+      if (axios.isAxiosError(err) && err.response?.data?.message) {
+        message = err.response.data.message;
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+      alert(message);
+      await loadLayout(false);
+    } finally {
+      setUpdatingSeat(null);
+    }
+  };
+
+  const handleConfirmSelection = () => {
+    if (selectedSeats.length === 0) {
+      return;
+    }
+
+    cart.addItem({
+      ticketGroup,
+      seatNumbers: selectedSeats,
+    });
+
+    onBack();
+  };
+
+  const handleClearSelection = async () => {
+    if (selectedSeats.length === 0) return;
+
+    try {
+      await releaseSeats(selectedSeats);
+      setSelectedSeats([]);
+      if (existingCartItem) {
+        cart.removeItem(ticketGroup.id);
+      }
+      await loadLayout(false);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to clear selection";
+      alert(message);
+    }
+  };
+
+  const handleBack = async () => {
+    const pendingRelease = selectedSeatsRef.current.filter(
+      (seat) => !cartSeatsRef.current.includes(seat),
+    );
+    try {
+      if (pendingRelease.length > 0) {
+        await releaseSeats(pendingRelease);
+      }
+    } catch {
+      // Still navigate back if release fails
+    }
+    onBack();
   };
 
   const getSeatColor = (status: SeatStatus) => {
     switch (status) {
       case "SELECETED":
-        return "bg-purple-600 text-white";
+        return "bg-purple-600 text-white hover:bg-purple-700 cursor-pointer";
       case "SOLD":
+      case "USED":
         return "bg-red-500 text-white cursor-not-allowed";
       case "RESERVED":
         return "bg-yellow-500 text-white cursor-not-allowed";
@@ -79,7 +216,7 @@ export const SeatMapSelector = ({
       <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
         <p className="text-red-600 font-medium">{error}</p>
         <button
-          onClick={onBack}
+          onClick={handleBack}
           className="mt-4 text-purple-600 hover:text-purple-700 font-medium"
         >
           ← Back to Groups
@@ -96,7 +233,7 @@ export const SeatMapSelector = ({
     <div className="bg-white rounded-lg shadow p-6">
       <div className="mb-6">
         <button
-          onClick={onBack}
+          onClick={handleBack}
           className="text-purple-600 hover:text-purple-700 font-medium flex items-center gap-2"
         >
           <svg
@@ -125,7 +262,6 @@ export const SeatMapSelector = ({
         </span>
       </div>
 
-      {/* Legend */}
       <div className="flex gap-6 mb-6 text-sm">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-green-500 rounded"></div>
@@ -145,14 +281,12 @@ export const SeatMapSelector = ({
         </div>
       </div>
 
-      {/* Stage */}
       <div className="mb-4">
         <div className="bg-gray-800 text-white text-center py-3 rounded-lg font-semibold">
           STAGE
         </div>
       </div>
 
-      {/* Seat Map */}
       <div className="mb-6 overflow-x-auto">
         <div className="inline-block min-w-full">
           {layout.map((row) => (
@@ -162,21 +296,20 @@ export const SeatMapSelector = ({
               </div>
               <div className="flex gap-1">
                 {row.seats.map((seat) => {
-                  const status = selectedSeats.some(
-                    (s) => s.seatNumber === seat.seatNumber,
-                  )
-                    ? "SELECETED"
-                    : seat.status;
+                  const isSelected = isSelectedSeat(seat.seatNumber);
+                  const status = isSelected ? "SELECETED" : seat.status;
+                  const isDisabled =
+                    !canToggleSeat(seat) || updatingSeat !== null;
 
                   return (
                     <button
                       key={seat.seatNumber}
                       onClick={() => handleSeatClick(seat)}
-                      // disabled={}
-                      className={`cursor-pointer w-10 h-10 rounded text-xs font-medium transition-colors ${getSeatColor(
+                      disabled={isDisabled}
+                      className={`w-10 h-10 rounded text-xs font-medium transition-colors ${getSeatColor(
                         status,
-                      )}`}
-                      title={`${seat.seatNumber}-${status}`}
+                      )} ${isSelected ? "cursor-pointer" : ""} ${updatingSeat === seat.seatNumber ? "opacity-60" : ""}`}
+                      title={`${seat.seatNumber} - ${status}`}
                     >
                       {seat.seatNumber.replace(row.row, "")}
                     </button>
@@ -188,7 +321,6 @@ export const SeatMapSelector = ({
         </div>
       </div>
 
-      {/* Selection Summary */}
       {selectedSeats.length > 0 && (
         <div className="bg-purple-50 rounded-lg p-4 mb-4">
           <div className="flex justify-between items-center mb-2">
@@ -201,12 +333,12 @@ export const SeatMapSelector = ({
             </button>
           </div>
           <div className="flex flex-wrap gap-2 mb-3">
-            {selectedSeats.map((seat) => (
+            {selectedSeats.map((seatNumber) => (
               <span
-                key={seat.seatNumber}
+                key={seatNumber}
                 className="px-3 py-1 bg-white border border-purple-300 rounded-full text-sm font-medium"
               >
-                {seat.seatNumber}
+                {seatNumber}
               </span>
             ))}
           </div>
@@ -219,13 +351,12 @@ export const SeatMapSelector = ({
         </div>
       )}
 
-      {/* Action Buttons */}
       <button
         onClick={handleConfirmSelection}
-        disabled={selectedSeats.length === 0}
+        disabled={selectedSeats.length === 0 || updatingSeat !== null}
         className="w-full bg-purple-600 text-white py-3 px-6 rounded-lg hover:bg-purple-700 transition-colors font-medium text-lg disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Confirm Selection ({selectedSeats.length} seat
+        Add to Cart ({selectedSeats.length} seat
         {selectedSeats.length !== 1 ? "s" : ""})
       </button>
     </div>

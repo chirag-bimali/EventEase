@@ -10,7 +10,6 @@ import type { TicketGroup } from "../../types/ticketGroup.types";
 interface TicketingStepProps {
   event: Event;
   cart: ReturnType<typeof import("../../hooks/usePOSCart").usePOSCart>;
-  seatHolds: ReturnType<typeof import("../../hooks/useSeatHolds").useSeatHolds>;
   onNext: () => void;
   onBack: () => void;
 }
@@ -18,7 +17,6 @@ interface TicketingStepProps {
 export const TicketingStep = ({
   event,
   cart,
-  seatHolds,
   onNext,
   onBack,
 }: TicketingStepProps) => {
@@ -68,14 +66,18 @@ export const TicketingStep = ({
     );
   }
 
-  const renderSelector = () => {
-    if (!selectedGroup) return null;
+  const activeGroup = selectedGroup
+    ? ticketGroups.find((g) => g.id === selectedGroup.id) ?? selectedGroup
+    : null;
 
-    switch (selectedGroup.seatType) {
+  const renderSelector = () => {
+    if (!activeGroup) return null;
+
+    switch (activeGroup.seatType) {
       case "QUEUE":
         return (
           <QueueTicketSelector
-            ticketGroup={selectedGroup}
+            ticketGroup={activeGroup}
             cart={cart}
             onBack={() => setSelectedGroup(null)}
           />
@@ -91,7 +93,7 @@ export const TicketingStep = ({
       case "SEAT":
         return (
           <SeatMapSelector
-            ticketGroup={selectedGroup}
+            ticketGroup={activeGroup}
             cart={cart}
             onBack={() => setSelectedGroup(null)}
           />
@@ -165,7 +167,6 @@ export const TicketingStep = ({
       <div className="lg:col-span-1">
         <CartSummary
           cart={cart}
-          seatHolds={seatHolds}
           onCheckout={onNext}
           onBack={onBack}
           showBackButton={!selectedGroup}

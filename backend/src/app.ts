@@ -8,7 +8,6 @@ import { roleRouter } from "./routes/role.routes.ts";
 import { eventRouter } from "./routes/event.routes.ts";
 import { ticketGroupRouter } from "./routes/ticketGroup.routes.ts";
 import { ticketRouter } from "./routes/ticket.routes.ts";
-import { seatHoldRouter } from "./routes/seatHold.routes.ts";
 import { posOrderRouter } from "./routes/posOrder.routes.ts";
 import { ticketValidationRouter } from "./routes/ticketValidation.routes.ts";
 
@@ -29,7 +28,6 @@ app.use("/api/roles", roleRouter);
 app.use("/api/events", eventRouter);
 app.use("/api/ticket-groups", ticketGroupRouter);
 app.use("/api/tickets", ticketRouter);
-app.use("/api/seat-holds", seatHoldRouter);
 app.use("/api/pos-orders", posOrderRouter);
 app.use("/api/tickets/validation", ticketValidationRouter);
 

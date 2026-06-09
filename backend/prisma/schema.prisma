@@ -28,7 +28,6 @@ model User {
   reservedTickets  Ticket[] @relation("ReservedTickets")
 
   posOrders       PosOrder[]
-  seatHolds       SeatHold[]
 }
 
 model Role {
@@ -87,7 +86,6 @@ model TicketGroup {
   updatedAt   DateTime @updatedAt
 
   orderItems      PosOrderItem[]
-  seatHolds       SeatHold[]
 }
 
 
@@ -178,19 +176,6 @@ model PosOrderItem {
   subtotal        Decimal   @db.Decimal(10, 2)
   tickets         Ticket[]  @relation("OrderItemTickets")
   createdAt       DateTime  @default(now())
-}
-
-model SeatHold {
-  id              Int       @id @default(autoincrement())
-  ticketGroupId   Int
-  ticketGroup     TicketGroup @relation(fields: [ticketGroupId], references: [id], onDelete: Cascade)
-  seatNumber      String
-  heldBy          Int
-  holder          User      @relation(fields: [heldBy], references: [id])
-  expiresAt       DateTime
-  createdAt       DateTime  @default(now())
-  
-  @@unique([ticketGroupId, seatNumber])
 }
 
 enum PaymentMethod {

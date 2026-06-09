@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { PosOrder } from "../types/posOrder.types";
-import type { CreatePosOrderRequest } from "../types/posOrder.types";
+import axios from "axios";
+import type { PosOrder, CreatePosOrderRequest } from "../types/posOrder.types";
 import { posService } from "../services/pos.service";
 
 export const usePOS = () => {
@@ -17,8 +17,12 @@ export const usePOS = () => {
       const order = await posService.createOrder(orderData);
       return order;
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to create order";
+      let message = "Failed to create order";
+      if (axios.isAxiosError(err) && err.response?.data?.message) {
+        message = err.response.data.message;
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
       setError(message);
       return null;
     } finally {

@@ -4,6 +4,10 @@ import type {
   CreateTicketGroupDTO,
   SeatingRow,
 } from "../schemas/ticketGroup.schema.ts";
+import {
+  releaseExpiredReservations,
+  resolveTicketSeatStatus,
+} from "./ticketReservation.service.ts";
 
 export const ticketGroupService = {
   // TICKET GROUP MANAGEMENT
@@ -51,6 +55,8 @@ export const ticketGroupService = {
   },
 
   async getTicketGroupsByEvent(eventId: number) {
+    await releaseExpiredReservations({ eventId });
+
     return await prisma.ticketGroup.findMany({
       where: { eventId },
       include: {
@@ -86,6 +92,8 @@ export const ticketGroupService = {
         ? JSON.stringify(seatingConfig)
         : null;
     }
+    await releaseExpiredReservations({ ticketGroupId: id });
+
     return await prisma.ticketGroup.update({
       where: { id },
       data: updateData,
@@ -103,6 +111,8 @@ export const ticketGroupService = {
 
   // Helper method to get parsed seating configuration
   async getTicketGroupWithParsedConfig(id: number) {
+    await releaseExpiredReservations({ ticketGroupId: id });
+
     const ticketGroup = await prisma.ticketGroup.findUnique({
       where: { id },
       include: { tickets: true },
@@ -120,6 +130,8 @@ export const ticketGroupService = {
 
   // Get availability statistics for a ticket group
   async getTicketGroupAvailability(id: number) {
+    await releaseExpiredReservations({ ticketGroupId: id });
+
     const ticketGroup = await prisma.ticketGroup.findUnique({
       where: { id },
       include: {
@@ -170,7 +182,8 @@ export const ticketGroupService = {
   },
 
   async getSeatLayout(ticketGroupId: number) {
-    // Get ticket group with seating config
+    await releaseExpiredReservations({ ticketGroupId });
+
     const ticketGroup = await prisma.ticketGroup.findUnique({
       where: { id: ticketGroupId },
       include: {
@@ -178,6 +191,8 @@ export const ticketGroupService = {
           select: {
             seatNumber: true,
             status: true,
+            reservedAt: true,
+            reservedById: true,
           },
         },
       },
@@ -201,25 +216,24 @@ export const ticketGroupService = {
     const seatingConfig = JSON.parse(ticketGroup.seatingConfig) as SeatingRow[];
 
     // Create a map of seat status for quick lookup
-    const seatStatusMap = new Map<string, string>();
-    for (const ticket of ticketGroup.tickets) {
-      seatStatusMap.set(ticket.seatNumber, ticket.status);
-    }
+    const ticketBySeat = new Map(
+      ticketGroup.tickets.map((ticket) => [ticket.seatNumber, ticket]),
+    );
 
-    
-
-    // Build response with rows and seats
     const rows = seatingConfig.map((rowConfig) => {
       const seats = [];
 
-      // Generate seat numbers for each column in this row
       for (let col = 1; col <= rowConfig.columns; col++) {
         const seatNumber = `${rowConfig.row}${col}`;
-        const status = seatStatusMap.get(seatNumber) || "AVAILABLE";
+        const ticket = ticketBySeat.get(seatNumber);
+        const status = ticket
+          ? resolveTicketSeatStatus(ticket.status, ticket.reservedAt)
+          : "AVAILABLE";
 
         seats.push({
-          seatNumber: seatNumber,
+          seatNumber,
           status,
+          reservedById: ticket?.reservedById ?? null,
         });
       }
 

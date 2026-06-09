@@ -175,38 +175,30 @@ export const useTicketGroups = () => {
           ticketGroup.seatingConfig as string,
         ) as SeatingRow[];
 
-        // Create a map of seat status for quick lookup
         const seatStatusMap = new Map<string, SeatStatus>();
         for (const ticket of ticketGroup.tickets || []) {
-          // const status =
-          seatStatusMap.set(ticket.seatNumber, ticket.status);
+          if (ticket.status === "RESERVED") {
+            const expired =
+              !ticket.reservedAt ||
+              Date.now() - Date.parse(ticket.reservedAt) > 10 * 60 * 1000;
+            seatStatusMap.set(
+              ticket.seatNumber,
+              expired ? "AVAILABLE" : "RESERVED",
+            );
+          } else {
+            seatStatusMap.set(ticket.seatNumber, ticket.status);
+          }
         }
 
-        // Build response with rows and seats
         const rows: SeatLayoutRow[] = seatingConfig.map((rowConfig) => {
           const seats: SeatInfo[] = [];
 
-          // Generate seat numbers for each column in this row
           for (let col = 1; col <= rowConfig.columns; col++) {
             const seatNumber = `${rowConfig.row}${col}`;
-            const ticket = ticketGroup.tickets?.find(
-              (t) => t.seatNumber === seatNumber,
-            );
-
-            const ticketReservedTenMinutesAgo = ticket?.reservedAt
-              ? Date.now() - Date.parse(ticket.reservedAt) > 10 * 60 * 1000
-              : false;
-
-            const seatStatus: SeatStatus = ticket
-              ? ticket.status === "RESERVED" && ticketReservedTenMinutesAgo
-                ? "AVAILABLE"
-                : ticket.reservedAt
-                  ? (ticket.status as SeatStatus)
-                  : "AVAILABLE"
-              : "AVAILABLE";
+            const seatStatus = seatStatusMap.get(seatNumber) ?? "AVAILABLE";
 
             seats.push({
-              seatNumber: seatNumber,
+              seatNumber,
               status: seatStatus,
             });
           }

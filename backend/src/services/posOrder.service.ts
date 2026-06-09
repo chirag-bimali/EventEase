@@ -1,4 +1,5 @@
 import type { CreatePosOrderDTO } from "../schemas/posOrder.schema.ts";
+import { SeatType } from "../generated/prisma/index.js";
 import { prisma } from "../lib/primsa.ts";
 import { ticketService } from "./ticket.service.ts";
 
@@ -36,9 +37,9 @@ export const posOrderService = {
       const tickets = await ticketService.batchGenerateTickets(
         item.ticketGroupId,
         createdById,
-        item.seatType,
+        item.seatType as SeatType,
         item.quantity,
-        item.seatNumbers
+        item.seatNumbers,
       );
 
       if (tickets.length === 0) {

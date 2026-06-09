@@ -1,21 +1,75 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import { EventSelector } from "../components/POS/EventSelector";
 import { TicketingStep } from "../components/POS/TicketingStep";
 import { PaymentForm } from "../components/POS/PaymentForm";
 import { TicketReceipt } from "../components/POS/TicketReceipt";
 import { usePOSCart } from "../hooks/usePOSCart";
-import { useSeatHolds } from "../hooks/useSeatHolds";
+import { eventService } from "../services/event.service";
+import {
+  loadSession,
+  saveSession,
+  clearPOSSession,
+  type POSStep,
+} from "../lib/posSessionStorage";
+import { releaseCartSeatReservations } from "../lib/releaseCartSeats";
 import type { Event } from "../types/event.types";
 import type { PosOrder } from "../types/posOrder.types";
 
 export const POSPage = () => {
-  const [step, setStep] = useState<"event" | "ticketing" | "payment" | "receipt">("event");
+  const [step, setStep] = useState<POSStep | "receipt">("event");
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [completedOrder, setCompletedOrder] = useState<PosOrder | null>(null);
+  const [restoring, setRestoring] = useState(true);
 
   const cart = usePOSCart();
-  const seatHolds = useSeatHolds();
+
+  const resetSession = async () => {
+    try {
+      await releaseCartSeatReservations(cart.cart);
+    } catch {
+      // Continue clearing local cart even if release fails
+    }
+    cart.clearCart();
+    clearPOSSession();
+  };
+
+  useEffect(() => {
+    const restore = async () => {
+      const session = loadSession();
+
+      if (session.eventId) {
+        try {
+          const event = await eventService.getEventById(session.eventId);
+          setSelectedEvent(event);
+
+          if (session.step === "payment" && cart.getItemCount() > 0) {
+            setStep("payment");
+          } else if (cart.getItemCount() > 0 || session.step !== "event") {
+            setStep("ticketing");
+          }
+        } catch {
+          cart.clearCart();
+          clearPOSSession();
+        }
+      }
+
+      setRestoring(false);
+    };
+
+    restore();
+    // Only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (restoring || step === "receipt") return;
+
+    saveSession({
+      eventId: selectedEvent?.id ?? null,
+      step: step as POSStep,
+    });
+  }, [selectedEvent, step, restoring]);
 
   const handleEventSelect = (event: Event) => {
     setSelectedEvent(event);
@@ -30,31 +84,40 @@ export const POSPage = () => {
     setStep("payment");
   };
 
-  const handlePaymentComplete = (order: PosOrder) => {
+  const handlePaymentComplete = async (order: PosOrder) => {
     setCompletedOrder(order);
-    seatHolds.clearAllHolds();
     cart.clearCart();
+    clearPOSSession();
     setStep("receipt");
   };
 
-  const handleStartNew = () => {
+  const handleStartNew = async () => {
     setStep("event");
     setSelectedEvent(null);
     setCompletedOrder(null);
-    cart.clearCart();
-    seatHolds.clearAllHolds();
+    await resetSession();
   };
 
-  const handleBack = () => {
+  const handleBack = async () => {
     if (step === "ticketing") {
       setStep("event");
       setSelectedEvent(null);
-      cart.clearCart();
-      seatHolds.clearAllHolds();
+      await resetSession();
     } else if (step === "payment") {
       setStep("ticketing");
     }
   };
+
+  if (restoring) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="flex justify-center items-center py-32">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -124,7 +187,6 @@ export const POSPage = () => {
           <TicketingStep
             event={selectedEvent}
             cart={cart}
-            seatHolds={seatHolds}
             onNext={handleNextToPayment}
             onBack={handleBack}
           />

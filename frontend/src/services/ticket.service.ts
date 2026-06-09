@@ -31,8 +31,20 @@ export const ticketService = {
 
   async getTicketStats(eventId?: number): Promise<TicketStats> {
     const response = await axiosInstance.get("/tickets/stats", {
-      params: { eventId }
+      params: { eventId },
     });
     return response.data;
-  }
+  },
+
+  async updateSeatStatus(
+    ticketGroupId: number,
+    seatNumbers: string[],
+    status: "RESERVED" | "AVAILABLE",
+  ): Promise<void> {
+    await axiosInstance.post("/tickets/seat", {
+      ticketGroupId,
+      seatNumber: seatNumbers,
+      status,
+    });
+  },
 };

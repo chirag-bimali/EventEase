@@ -88,6 +88,7 @@ export type SeatStatus =
 export interface SeatInfo {
   seatNumber: string;
   status: SeatStatus;
+  reservedById?: number | null;
 }
 
 export interface SeatLayout {

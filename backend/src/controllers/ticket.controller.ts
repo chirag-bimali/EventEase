@@ -22,8 +22,11 @@ export const createSeatTicket = async (
       });
     }
     const userId = (req as any).user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
 
-    const ticket = await ticketService.createSeatTicket(parsed.data, userId);
+    await ticketService.createSeatTicket(parsed.data, userId);
 
     return res.status(201).json(parsed.data);
     // return res.status(201).json(ticket);
