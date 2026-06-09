@@ -5,7 +5,9 @@ import CreateEventModel from "../components/CreateEventModel";
 import { EventCard } from "../components/EventCard";
 
 export const EventsPage = () => {
-  const { events, loading, error, refetch } = useEvents();
+  
+  const { events, loading, error, refetch } = useEvents({});
+  
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const renderBody = () => {
@@ -26,7 +28,7 @@ export const EventsPage = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 px-6 pb-10 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 px-6 pb-10 md:grid-cols-2 lg:grid-cols-5">
           {events.map((event) => (
             <EventCard key={event.id} event={event} />
           ))}

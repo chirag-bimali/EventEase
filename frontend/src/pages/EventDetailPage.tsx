@@ -14,6 +14,7 @@ import type {
   CreateTicketGroupDTO,
   UpdateTicketGroupDTO,
 } from "../types/ticketGroup.types";
+import { SquarePen } from "lucide-react";
 
 export const EventDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -94,7 +95,7 @@ export const EventDetailPage = () => {
   const handleModalSubmit = async (
     data: CreateTicketGroupDTO | UpdateTicketGroupDTO,
     isUpdate?: boolean,
-    ticketGroupId?: number
+    ticketGroupId?: number,
   ) => {
     try {
       if (isUpdate && ticketGroupId) {
@@ -102,6 +103,8 @@ export const EventDetailPage = () => {
       } else {
         await createTicketGroup(data as CreateTicketGroupDTO);
       }
+
+
     } catch (err) {
       alert("Failed to submit ticket group");
       throw err;
@@ -132,6 +135,8 @@ export const EventDetailPage = () => {
     );
   }
 
+  console.log("Event data:", event);
+
   if (eventError || !event) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -159,14 +164,16 @@ export const EventDetailPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left side - Event Details */}
           <div>
-            <div className="flex justify-between items-start mb-4">
-              <h1 className="text-3xl font-bold text-gray-900">{event.name}</h1>
+            <div className="flex items-center justify-between mb-4 w-full overflow-hidden gap-12">
+              <h1 className="text-lg font-bold text-gray-900 text-ellipsis overflow-hidden w-full text-nowrap">
+                {event.name}
+              </h1>
               {isAdmin && (
                 <button
                   onClick={() => setIsEditModalOpen(true)}
-                  className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
+                  className="cursor-pointer px-2 py-2 text-purple-900 border border-purple-900 text-sm flex items-center font-medium text-nowrap rounded-lg hover:bg-purple-400 hover:text-white hover:border-transparent  transition-all"
                 >
-                  Edit Event
+                  <SquarePen className="inline-block" size={16} />
                 </button>
               )}
             </div>
@@ -174,10 +181,10 @@ export const EventDetailPage = () => {
               {startDate && endDate
                 ? `${startDate} ~ ${endDate}`
                 : startDate
-                ? `Starts: ${startDate}`
-                : endDate
-                ? `Ends: ${endDate}`
-                : "Date & Time TBA"}
+                  ? `Starts: ${startDate}`
+                  : endDate
+                    ? `Ends: ${endDate}`
+                    : "Date & Time TBA"}
             </p>
 
             {/* Event Image */}
@@ -208,11 +215,11 @@ export const EventDetailPage = () => {
                   <span className="font-medium">Status:</span>{" "}
                   <span
                     className={`inline-block px-2 py-1 rounded text-xs ${
-                      event.status === "AVAILABLE"
+                      event.status === "PUBLISHED"
                         ? "bg-green-100 text-green-800"
                         : event.status === "SOLD"
-                        ? "bg-red-100 text-red-800"
-                        : "bg-blue-100 text-blue-800"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-blue-100 text-blue-800"
                     }`}
                   >
                     {event.status}
@@ -230,7 +237,7 @@ export const EventDetailPage = () => {
               </h2>
               <button
                 onClick={handleAddGroup}
-                className="px-6 py-2 bg-purple-200 text-purple-900 rounded-lg hover:bg-purple-300 transition font-medium"
+                className="px-6 py-2 cursor-pointer bg-purple-200 text-purple-900 rounded-lg hover:bg-purple-300 transition font-medium"
               >
                 ADD GROUP
               </button>

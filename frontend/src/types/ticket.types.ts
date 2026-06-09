@@ -11,6 +11,10 @@ export interface Ticket {
   ticketGroupId: number;
   seatNumber: string;
   status: TicketStatus;
+
+  reservedAt?: string;
+  reservedById: number;
+
   purchasedById?: number;
   purchasedAt?: string;
   createdAt: string;

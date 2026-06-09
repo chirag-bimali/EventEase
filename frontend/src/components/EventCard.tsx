@@ -9,11 +9,12 @@ interface EventCardProps {
 export const EventCard = ({ event }: EventCardProps) => {
   const startDate = format(new Date(event.startTime), "MMM yyyy h:mm a");
   const endDate = format(new Date(event.endTime), "h:mm a");
+  console.log("EventCard rendered for event:", event);
 
   return (
     <Link to={`/events/${event.id}`} className="block">
       <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition">
-        <div className="h-48 bg-blue-900">
+        <div className="h-56 bg-blue-900">
           {event.imageUrl && (
             <img
               src={event.imageUrl}
@@ -23,15 +24,15 @@ export const EventCard = ({ event }: EventCardProps) => {
           )}
         </div>
         <div className="p-4">
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">
+          <div className="flex justify-between gap-6 items-start mb-2 w-full">
+            <div className="overflow-hidden">
+              <h3 className="font-semibold text-gray-800 text-nowrap overflow-hidden text-ellipsis w-full">
                 {event.name}
               </h3>
-              <p className="text-sm text-gray-600">
+              <p className="text-xs font-medium text-gray-950/50">
                 {startDate} - {endDate}
               </p>
-              <p className="text-sm text-gray-600">{event.venue}</p>
+              <p className="text-xs font-medium text-gray-950/50">{event.venue}</p>
             </div>
             <span
               className={`text-xs px-2 py-1 rounded ${

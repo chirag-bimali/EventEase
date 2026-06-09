@@ -59,7 +59,6 @@ export interface DeleteTicketGroupResponse {
   id?: number;
 }
 
-
 // TicketGroup query options
 export interface TicketGroupQueryParams {
   eventId?: number;
@@ -75,15 +74,20 @@ export interface TicketGroupAvailability {
   total: number; // -1 means unlimited
 }
 
-
 export interface SeatLayoutRow {
   row: string;
   seats: SeatInfo[];
 }
+export type SeatStatus =
+  | "AVAILABLE"
+  | "RESERVED"
+  | "SOLD"
+  | "USED"
+  | "SELECETED";
 
 export interface SeatInfo {
   seatNumber: string;
-  status: "AVAILABLE" | "RESERVED" | "SOLD";
+  status: SeatStatus;
 }
 
 export interface SeatLayout {

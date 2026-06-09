@@ -48,9 +48,10 @@ export default function EventEditModal({
 
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(
-    event.imageUrl || null
+    event.imageUrl || null,
   );
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageUploaded, setImageUploaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -128,6 +129,7 @@ export default function EventEditModal({
       const uploadResult = await eventService.uploadEventImage(selectedImage);
       setForm((prev) => ({ ...prev, imageUrl: uploadResult.imageUrl }));
       setSelectedImage(null);
+      setImageUploaded(true);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         const message = err.response?.data?.message || err.message;
@@ -160,6 +162,7 @@ export default function EventEditModal({
         imageUrl: form.imageUrl?.trim() || undefined,
         status: form.status,
       };
+
       const token = getToken();
       if (token === null) {
         throw new Error("User is not authenticated");
@@ -185,11 +188,12 @@ export default function EventEditModal({
   };
 
   if (!isOpen) return null;
-  
+
   const fieldLabel =
     "text-sm font-medium text-gray-700 border-b-2 border-purple-500 inline-block pb-1";
   const inputBase =
     "w-full px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white shadow-sm";
+  console.log("Image preview URL:", imagePreview);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -279,7 +283,7 @@ export default function EventEditModal({
                 />
               </div>
             )}
-            {selectedImage && !form.imageUrl && (
+            {selectedImage && (
               <button
                 type="button"
                 onClick={uploadImage}
@@ -289,7 +293,7 @@ export default function EventEditModal({
                 {uploadingImage ? "Uploading..." : "Upload Image"}
               </button>
             )}
-            {form.imageUrl && (
+            {imageUploaded && (
               <p className="text-sm text-green-600 mt-1">✓ Image uploaded</p>
             )}
           </div>

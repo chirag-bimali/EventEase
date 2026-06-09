@@ -33,7 +33,7 @@ export const TicketingStep = ({
   }, [event.id, fetchTicketGroupsByEvent]);
 
   const [selectedGroup, setSelectedGroup] = useState<TicketGroup | null>(() =>
-    ticketGroups.length === 1 ? ticketGroups[0] : null
+    ticketGroups.length === 1 ? ticketGroups[0] : null,
   );
 
   if (loading) {
@@ -93,7 +93,6 @@ export const TicketingStep = ({
           <SeatMapSelector
             ticketGroup={selectedGroup}
             cart={cart}
-            seatHolds={seatHolds}
             onBack={() => setSelectedGroup(null)}
           />
         );
@@ -140,8 +139,8 @@ export const TicketingStep = ({
                         group.seatType === "SEAT"
                           ? "bg-blue-100 text-blue-700"
                           : group.seatType === "QUEUE"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-purple-100 text-purple-700"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-purple-100 text-purple-700"
                       }`}
                     >
                       {group.seatType}

@@ -1,14 +1,12 @@
 import { SeatType, TicketStatus } from "../generated/prisma/index.js";
 import { prisma } from "../lib/primsa.ts";
+import { type CreateSeatTicketDTO } from "../schemas/ticket.schema.ts";
 import { qrTokenService } from "./qrToken.service.ts";
 
 export const ticketService = {
-  // TICKET GENERATION
-  async generateTicket(
-    ticketGroupId: number,
-    userId: number,
-    seatNumber?: string
-  ) {
+  async createSeatTicket(data: CreateSeatTicketDTO, userId: number) {
+    const { ticketGroupId, seatNumber, status } = data;
+
     const ticketGroup = await prisma.ticketGroup.findUnique({
       where: { id: ticketGroupId },
       include: { tickets: true },
@@ -18,125 +16,110 @@ export const ticketService = {
       throw new Error("Ticket group not found");
     }
 
-    // For SEAT type - user must specify a seat number and it must be valid per seatingConfig
-    if (ticketGroup.seatType === SeatType.SEAT) {
-      if (!seatNumber) {
-        throw new Error("Seat number is required for SEAT type tickets");
+    if (ticketGroup.seatType !== SeatType.SEAT) {
+      throw new Error(
+        "Cannot create seat ticket for non-SEAT type ticket group",
+      );
+    }
+
+    // Parse seating configuration to validate seat existence
+    const seatingConfig = ticketGroup.seatingConfig
+      ? (JSON.parse(ticketGroup.seatingConfig) as {
+          row: string;
+          columns: number;
+        }[])
+      : [];
+
+    if (!seatingConfig.length) {
+      throw new Error(
+        "Seating configuration not available for this ticket group",
+      );
+    }
+
+    // Build a quick lookup of valid seats
+    const validSeatSet = new Set<string>();
+    for (const rowConfig of seatingConfig) {
+      for (let col = 1; col <= rowConfig.columns; col++) {
+        validSeatSet.add(`${rowConfig.row}${col}`);
       }
+    }
 
-      // Parse seating configuration to validate seat existence
-      const seatingConfig = ticketGroup.seatingConfig
-        ? (JSON.parse(ticketGroup.seatingConfig) as {
-            row: string;
-            columns: number;
-          }[])
-        : [];
-
-      if (!seatingConfig.length) {
+    // check if requested seats exist in seating config
+    for (const seat of seatNumber) {
+      if (!validSeatSet.has(seat)) {
         throw new Error(
-          "Seating configuration not available for this ticket group"
+          `Seat number ${seat} does not exist in this ticket group`,
         );
       }
+    }
 
-      // Build a quick lookup of valid seats
-      const validSeatSet = new Set<string>();
-      for (const rowConfig of seatingConfig) {
-        for (let col = 1; col <= rowConfig.columns; col++) {
-          validSeatSet.add(`${rowConfig.row}${col}`);
-        }
+    // Ensure the seats are not already sold/reserved
+    const existing = ticketGroup.tickets.filter((t) => {
+      // choose only the tickets that match the requested seat numbers
+      const choosedSeat = seatNumber.includes(t.seatNumber);
+      if (!choosedSeat) return false;
+
+      if (t.status === TicketStatus.SOLD || t.status === TicketStatus.USED) {
+        return true;
       }
 
-      if (!validSeatSet.has(seatNumber)) {
-        throw new Error("Seat number does not exist in this ticket group");
+      if (t.status === TicketStatus.RESERVED && t.reservedById !== userId) {
+        return true;
       }
+      return false;
+    });
 
-      // Ensure the seat is not already sold/reserved
-      const existing = await prisma.ticket.findFirst({
+    if (existing.length > 0) {
+      throw new Error(
+        `Seat ${existing.map((t) => t.seatNumber).join(", ")} is already taken`,
+      );
+    }
+
+    const existingTickets = ticketGroup.tickets;
+
+    const existingSeatNumbersSet = new Set(
+      existingTickets.map((t) => t.seatNumber),
+    );
+
+    const existingSeatNumbers = existingTickets
+      .filter((t) => seatNumber.includes(t.seatNumber))
+      .map((t) => t.seatNumber);
+
+    const newSeats = seatNumber.filter(
+      (seat) => !existingSeatNumbersSet.has(seat),
+    );
+
+    await prisma.$transaction([
+      prisma.ticket.createMany({
+        data: newSeats.map((seatNumber) => ({
+          ticketGroupId,
+          reservedById: status === TicketStatus.RESERVED ? userId : null,
+          reservedAt: status === TicketStatus.RESERVED ? new Date() : null,
+          seatNumber,
+          status: status,
+        })),
+      }),
+
+      prisma.ticket.updateMany({
         where: {
           ticketGroupId,
-          seatNumber,
-          status: { in: [TicketStatus.SOLD, TicketStatus.RESERVED] },
-        },
-      });
-
-      if (existing) {
-        throw new Error("Seat already taken");
-      }
-
-      const seatHold = await prisma.seatHold.findFirst({
-        where: { ticketGroupId, seatNumber },
-      });
-
-      if (seatHold && seatHold.heldBy !== userId) {
-        throw new Error("Seat is currently held by another user");
-      }
-
-      const ticket = await prisma.ticket.upsert({
-        where: { ticketGroupId_seatNumber: { ticketGroupId, seatNumber } },
-        create: {
-          ticketGroupId,
-          seatNumber,
-          status: TicketStatus.SOLD,
-          purchasedById: userId,
-          purchasedAt: new Date(),
-        },
-        update: {
-          status: TicketStatus.SOLD,
-          purchasedById: userId,
-          purchasedAt: new Date(),
-        },
-        include: { ticketGroup: { include: { event: true } } },
-      });
-
-      return ticket;
-    }
-
-    // For QUEUE or GENERAL type - generate ticket dynamically
-    if (
-      ticketGroup.seatType === SeatType.QUEUE ||
-      ticketGroup.seatType === SeatType.GENERAL
-    ) {
-      // Count existing tickets to enforce quantity limits
-      const existingCount = await prisma.ticket.count({
-        where: { ticketGroupId },
-      });
-
-      const limit = ticketGroup.quantity ?? 0; // 0 or null means unlimited
-      if (limit > 0 && existingCount >= limit) {
-        throw new Error("All tickets have been sold");
-      }
-
-      // Generate the next ticket number
-      const nextNumber = existingCount + 1;
-      const prefix = ticketGroup.prefixFormat || "";
-      const generatedSeatNumber = `${prefix}${nextNumber}`;
-
-      // Create and mark the ticket as sold immediately
-      return await prisma.ticket.create({
-        data: {
-          ticketGroupId,
-          seatNumber: generatedSeatNumber,
-          status: TicketStatus.SOLD,
-          purchasedById: userId,
-          purchasedAt: new Date(),
-        },
-        include: {
-          ticketGroup: {
-            include: { event: true },
+          seatNumber: {
+            in: existingSeatNumbers,
           },
         },
-      });
-    }
-
-    throw new Error("Invalid ticket type");
+        data: {
+          status: status,
+          reservedById: status === TicketStatus.RESERVED ? userId : null,
+          reservedAt: status === TicketStatus.RESERVED ? new Date() : null,
+        },
+      }),
+    ]);
   },
 
-  async batchGenerateTickets(
+  async createGeneralOrQueueTickets(
     ticketGroupId: number,
+    quantity: number,
     userId: number,
-    seatType: SeatType,
-    quantity?: number,
-    seatNumbers?: string[]
   ) {
     const ticketGroup = await prisma.ticketGroup.findUnique({
       where: { id: ticketGroupId },
@@ -146,43 +129,218 @@ export const ticketService = {
     if (!ticketGroup) {
       throw new Error("Ticket group not found");
     }
-    const createdTickets = [];
 
-    if (seatType === SeatType.SEAT) {
-      if (!seatNumbers || seatNumbers.length === 0) {
-        throw new Error("Seat numbers are required for SEAT type tickets");
-      }
+    const ticketCount =
+      ticketGroup.tickets.length ||
+      0; /* Count existing tickets to enforce quantity limits */
+    const limit = ticketGroup.quantity ?? 0; // 0 or null means unlimited
 
-      for (const seatNumber of seatNumbers) {
-        const ticket = await this.generateTicket(
-          ticketGroupId,
-          userId,
-          seatNumber
-        );
-        createdTickets.push(ticket);
-      }
-    } else if (seatType === SeatType.QUEUE || seatType === SeatType.GENERAL) {
-      if (!quantity || quantity <= 0) {
-        throw new Error(
-          "Quantity must be a positive integer for QUEUE/GENERAL type tickets"
-        );
-      }
-
-      for (let i = 0; i < quantity; i++) {
-        const ticket = await this.generateTicket(ticketGroupId, userId);
-        createdTickets.push(ticket);
-      }
-    } else {
-      throw new Error("Invalid seat type");
+    if (limit > 0 && ticketCount + quantity > limit) {
+      throw new Error("Exceeds available ticket quantity");
     }
 
-    return createdTickets;
+    // Generate the next ticket number
+    const nextNumber = ticketCount + 1;
+    const prefix = ticketGroup.prefixFormat || "";
+    const generatedSeatNumber = `${prefix}${nextNumber}`;
+
+    // Create and mark the ticket as sold immediately
+    await prisma.ticket.create({
+      data: {
+        ticketGroupId,
+        seatNumber: generatedSeatNumber,
+        status: TicketStatus.SOLD,
+        purchasedById: userId,
+        purchasedAt: new Date(),
+      },
+      include: {
+        ticketGroup: {
+          include: { event: true },
+        },
+      },
+    });
   },
+
+  // // TICKET GENERATION
+  // async generateTicket(
+  //   ticketGroupId: number,
+  //   userId: number,
+  //   seatNumber?: string,
+  // ) {
+  //   const ticketGroup = await prisma.ticketGroup.findUnique({
+  //     where: { id: ticketGroupId },
+  //     include: { tickets: true },
+  //   });
+
+  //   if (!ticketGroup) {
+  //     throw new Error("Ticket group not found");
+  //   }
+
+  //   // For SEAT type - user must specify a seat number and it must be valid per seatingConfig
+  //   if (ticketGroup.seatType === SeatType.SEAT) {
+  //     if (!seatNumber) {
+  //       throw new Error("Seat number is required for SEAT type tickets");
+  //     }
+
+  //     // Parse seating configuration to validate seat existence
+  //     const seatingConfig = ticketGroup.seatingConfig
+  //       ? (JSON.parse(ticketGroup.seatingConfig) as {
+  //           row: string;
+  //           columns: number;
+  //         }[])
+  //       : [];
+
+  //     if (!seatingConfig.length) {
+  //       throw new Error(
+  //         "Seating configuration not available for this ticket group",
+  //       );
+  //     }
+
+  //     // Build a quick lookup of valid seats
+  //     const validSeatSet = new Set<string>();
+  //     for (const rowConfig of seatingConfig) {
+  //       for (let col = 1; col <= rowConfig.columns; col++) {
+  //         validSeatSet.add(`${rowConfig.row}${col}`);
+  //       }
+  //     }
+
+  //     if (!validSeatSet.has(seatNumber)) {
+  //       throw new Error("Seat number does not exist in this ticket group");
+  //     }
+
+  //     // Ensure the seat is not already sold/reserved
+  //     const existing = await prisma.ticket.findFirst({
+  //       where: {
+  //         ticketGroupId,
+  //         seatNumber,
+  //         status: { in: [TicketStatus.SOLD, TicketStatus.RESERVED] },
+  //       },
+  //     });
+
+  //     if (existing) {
+  //       throw new Error("Seat already taken");
+  //     }
+
+  //     const seatHold = await prisma.seatHold.findFirst({
+  //       where: { ticketGroupId, seatNumber },
+  //     });
+
+  //     if (seatHold && seatHold.heldBy !== userId) {
+  //       throw new Error("Seat is currently held by another user");
+  //     }
+
+  //     const ticket = await prisma.ticket.upsert({
+  //       where: { ticketGroupId_seatNumber: { ticketGroupId, seatNumber } },
+  //       create: {
+  //         ticketGroupId,
+  //         seatNumber,
+  //         status: TicketStatus.SOLD,
+  //         purchasedById: userId,
+  //         purchasedAt: new Date(),
+  //       },
+  //       update: {
+  //         status: TicketStatus.SOLD,
+  //         purchasedById: userId,
+  //         purchasedAt: new Date(),
+  //       },
+  //       include: { ticketGroup: { include: { event: true } } },
+  //     });
+
+  //     return ticket;
+  //   }
+
+  //   // For QUEUE or GENERAL type - generate ticket dynamically
+  //   if (
+  //     ticketGroup.seatType === SeatType.QUEUE ||
+  //     ticketGroup.seatType === SeatType.GENERAL
+  //   ) {
+  //     // Count existing tickets to enforce quantity limits
+  //     const existingCount = await prisma.ticket.count({
+  //       where: { ticketGroupId },
+  //     });
+
+  //     const limit = ticketGroup.quantity ?? 0; // 0 or null means unlimited
+  //     if (limit > 0 && existingCount >= limit) {
+  //       throw new Error("All tickets have been sold");
+  //     }
+
+  //     // Generate the next ticket number
+  //     const nextNumber = existingCount + 1;
+  //     const prefix = ticketGroup.prefixFormat || "";
+  //     const generatedSeatNumber = `${prefix}${nextNumber}`;
+
+  //     // Create and mark the ticket as sold immediately
+  //     return await prisma.ticket.create({
+  //       data: {
+  //         ticketGroupId,
+  //         seatNumber: generatedSeatNumber,
+  //         status: TicketStatus.SOLD,
+  //         purchasedById: userId,
+  //         purchasedAt: new Date(),
+  //       },
+  //       include: {
+  //         ticketGroup: {
+  //           include: { event: true },
+  //         },
+  //       },
+  //     });
+  //   }
+
+  //   throw new Error("Invalid ticket type");
+  // },
+
+  // async batchGenerateTickets(
+  //   ticketGroupId: number,
+  //   userId: number,
+  //   seatType: SeatType,
+  //   quantity?: number,
+  //   seatNumbers?: string[],
+  // ) {
+  //   const ticketGroup = await prisma.ticketGroup.findUnique({
+  //     where: { id: ticketGroupId },
+  //     include: { tickets: true },
+  //   });
+
+  //   if (!ticketGroup) {
+  //     throw new Error("Ticket group not found");
+  //   }
+  //   const createdTickets = [];
+
+  //   if (seatType === SeatType.SEAT) {
+  //     if (!seatNumbers || seatNumbers.length === 0) {
+  //       throw new Error("Seat numbers are required for SEAT type tickets");
+  //     }
+
+  //     for (const seatNumber of seatNumbers) {
+  //       const ticket = await this.generateTicket(
+  //         ticketGroupId,
+  //         userId,
+  //         seatNumber,
+  //       );
+  //       createdTickets.push(ticket);
+  //     }
+  //   } else if (seatType === SeatType.QUEUE || seatType === SeatType.GENERAL) {
+  //     if (!quantity || quantity <= 0) {
+  //       throw new Error(
+  //         "Quantity must be a positive integer for QUEUE/GENERAL type tickets",
+  //       );
+  //     }
+
+  //     for (let i = 0; i < quantity; i++) {
+  //       const ticket = await this.generateTicket(ticketGroupId, userId);
+  //       createdTickets.push(ticket);
+  //     }
+  //   } else {
+  //     throw new Error("Invalid seat type");
+  //   }
+
+  //   return createdTickets;
+  // },
 
   async generateQRTokensForTickets(
     tickets: Array<{ id: number; ticketGroupId: number; seatNumber: string }>,
     eventId: number,
-    orderId: number
+    orderId: number,
   ) {
     const updatedTickets = [];
 

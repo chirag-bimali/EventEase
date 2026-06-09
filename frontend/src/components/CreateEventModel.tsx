@@ -60,9 +60,9 @@ export const CreateEventModel = ({ onClose, onCreated }: Props) => {
       setUploadingImage(true);
       const { imageUrl } = await eventService.uploadEventImage(selectedImage);
       // Construct full URL for the backend
-      const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
-      const fullImageUrl = baseUrl.replace("/api", "") + imageUrl;
-      setForm((prev) => ({ ...prev, imageUrl: fullImageUrl }));
+      // const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+      // const fullImageUrl = baseUrl.replace("/api", "") + imageUrl;
+      setForm((prev) => ({ ...prev, imageUrl: imageUrl }));
       setError(null);
     } catch (err: unknown) {
       const message =

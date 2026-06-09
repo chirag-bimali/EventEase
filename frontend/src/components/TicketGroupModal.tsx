@@ -6,6 +6,7 @@ import type {
   SeatType,
   SeatingConfig,
 } from "../types/ticketGroup.types";
+import { X } from "lucide-react";
 
 interface TicketGroupModalProps {
   isOpen: boolean;
@@ -15,7 +16,7 @@ interface TicketGroupModalProps {
   onSubmit: (
     data: CreateTicketGroupDTO | UpdateTicketGroupDTO,
     isUpdate?: boolean,
-    id?: number
+    id?: number,
   ) => Promise<void>;
   loading?: boolean;
 }
@@ -55,13 +56,13 @@ export const TicketGroupModal = ({
 
   const totalSeats = useMemo(
     () => seatingRows.reduce((sum, row) => sum + (Number(row.columns) || 0), 0),
-    [seatingRows]
+    [seatingRows],
   );
 
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const { name, value } = e.target;
     if (name === "seatType") {
@@ -88,10 +89,10 @@ export const TicketGroupModal = ({
   const updateRow = (
     index: number,
     key: keyof SeatingConfig,
-    value: string | number
+    value: string | number,
   ) => {
     setSeatingRows((prev) =>
-      prev.map((row, i) => (i === index ? { ...row, [key]: value } : row))
+      prev.map((row, i) => (i === index ? { ...row, [key]: value } : row)),
     );
   };
 
@@ -178,6 +179,17 @@ export const TicketGroupModal = ({
         await onSubmit(createData);
       }
 
+      setFormData({
+        name: "",
+        description: "",
+        price: "",
+        seatType: "GENERAL",
+        quantity: "",
+        prefixFormat: "",
+      });
+      setSeatingRows([]);
+      setError(null);
+
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -189,10 +201,18 @@ export const TicketGroupModal = ({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-xl max-h-3/4 overflow-y-auto">
-        <h2 className="text-xl font-semibold mb-4">
-          {ticketGroup ? "Edit Ticket Group" : "Add Ticket Group"}
-        </h2>
-
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold">
+            {ticketGroup ? "Edit Ticket Group" : "Add Ticket Group"}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded hover:bg-gray-200 transition"
+          >
+            <X className="h-5 w-5 text-gray-500 cursor-pointer" />
+          </button>
+        </div>
         {error && (
           <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
             {error}
@@ -364,14 +384,14 @@ export const TicketGroupModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+              className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition cursor-pointer disabled:opacity-50"
               disabled={loading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition disabled:opacity-50"
+              className="flex-1 px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition disabled:opacity-50 cursor-pointer"
               disabled={loading}
             >
               {loading ? "Saving..." : ticketGroup ? "Update" : "Create"}
