@@ -9,9 +9,8 @@ type ValidationState = "idle" | "validating" | "success" | "error";
 export const TicketValidatorPage = () => {
   const [mode, setMode] = useState<ValidatorMode>("scanner");
   const [manualCode, setManualCode] = useState("");
-  const [validationState, setValidationState] = useState<ValidationState>(
-    "idle"
-  );
+  const [validationState, setValidationState] =
+    useState<ValidationState>("idle");
 
   const { validateTicket, loading, error, result, clearResult } =
     useTicketValidation();
@@ -68,7 +67,7 @@ export const TicketValidatorPage = () => {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <div className="max-w-2xl mx-auto p-6">
+      <div className="max-w-5xl mx-auto p-6">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
@@ -88,7 +87,7 @@ export const TicketValidatorPage = () => {
               </svg>
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-2xl font-semibold uppercase tracking-wide text-gray-800">
                 TICKET VALIDATOR
               </h1>
               <p className="text-gray-600">Scan or enter ticket codes</p>
@@ -153,10 +152,7 @@ export const TicketValidatorPage = () => {
               Position the QR code in front of the camera
             </p>
             <div className="rounded-lg overflow-hidden">
-              <QRScanner
-                onScan={handleScan}
-                onError={handleScannerError}
-              />
+              <QRScanner onScan={handleScan} onError={handleScannerError} />
             </div>
           </div>
         )}

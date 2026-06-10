@@ -8,7 +8,7 @@ import type {
   SeatInfo,
 } from "../types/ticketGroup.types";
 import { ticketGroupService } from "../services/ticketGroup.service";
-import axios from "axios";
+import { getApiErrorMessage } from "../lib/apiError";
 import type { SeatingRow } from "../types/posOrder.types";
 
 interface UseTicketGroupsState {
@@ -35,8 +35,7 @@ export const useTicketGroups = () => {
       const data = await ticketGroupService.getAllTicketGroups();
       setState((prev) => ({ ...prev, ticketGroups: data, loading: false }));
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to fetch ticket groups";
+      const message = getApiErrorMessage(err, "Failed to fetch ticket groups");
       setState((prev) => ({ ...prev, error: message, loading: false }));
     }
   }, []);
@@ -50,10 +49,10 @@ export const useTicketGroups = () => {
       const data = await ticketGroupService.getTicketGroupsByEventId(eventId);
       setState((prev) => ({ ...prev, ticketGroups: data, loading: false }));
     } catch (err: unknown) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Failed to fetch ticket groups for event";
+      const message = getApiErrorMessage(
+        err,
+        "Failed to fetch ticket groups for event",
+      );
       setState((prev) => ({ ...prev, error: message, loading: false }));
     }
   }, []);
@@ -67,8 +66,7 @@ export const useTicketGroups = () => {
       const data = await ticketGroupService.getTicketGroupById(id);
       setState((prev) => ({ ...prev, ticketGroup: data, loading: false }));
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to fetch ticket group";
+      const message = getApiErrorMessage(err, "Failed to fetch ticket group");
       setState((prev) => ({ ...prev, error: message, loading: false }));
     }
   }, []);
@@ -87,17 +85,9 @@ export const useTicketGroups = () => {
       }));
       return newTicketGroup;
     } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response) {
-        console.error("Axios error:", err);
-        const message =
-          err.response?.data?.message || "Failed to create ticket group";
-        setState((prev) => ({ ...prev, error: message, loading: false }));
-        throw new Error(message);
-      }
-      const message =
-        err instanceof Error ? err.message : "Failed to create ticket group";
+      const message = getApiErrorMessage(err, "Failed to create ticket group");
       setState((prev) => ({ ...prev, error: message, loading: false }));
-      throw err;
+      throw new Error(message);
     }
   }, []);
 
@@ -123,10 +113,9 @@ export const useTicketGroups = () => {
         }));
         return updatedTicketGroup;
       } catch (err: unknown) {
-        const message =
-          err instanceof Error ? err.message : "Failed to update ticket group";
+        const message = getApiErrorMessage(err, "Failed to update ticket group");
         setState((prev) => ({ ...prev, error: message, loading: false }));
-        throw err;
+        throw new Error(message);
       }
     },
     [],
@@ -146,10 +135,9 @@ export const useTicketGroups = () => {
         loading: false,
       }));
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to delete ticket group";
+      const message = getApiErrorMessage(err, "Failed to delete ticket group");
       setState((prev) => ({ ...prev, error: message, loading: false }));
-      throw err;
+      throw new Error(message);
     }
   }, []);
 

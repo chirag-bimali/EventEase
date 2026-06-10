@@ -1,4 +1,4 @@
-import { SeatType } from "../generated/prisma/index.js";
+import { Prisma, SeatType } from "../generated/prisma/index.js";
 import { prisma } from "../lib/primsa.ts";
 import type {
   CreateTicketGroupDTO,
@@ -104,9 +104,58 @@ export const ticketGroupService = {
   },
 
   async deleteTicketGroup(id: number) {
-    return await prisma.ticketGroup.delete({
+    const ticketGroup = await prisma.ticketGroup.findUnique({
       where: { id },
+      select: { id: true, name: true },
     });
+
+    if (!ticketGroup) {
+      throw new Error("Ticket group not found");
+    }
+
+    const [orderItemCount, soldTicketCount] = await prisma.$transaction([
+      prisma.posOrderItem.count({ where: { ticketGroupId: id } }),
+      prisma.ticket.count({
+        where: {
+          ticketGroupId: id,
+          status: { in: ["SOLD", "USED"] },
+        },
+      }),
+    ]);
+
+    if (orderItemCount > 0) {
+      throw new Error(
+        `Cannot delete "${ticketGroup.name}": it is linked to ${orderItemCount} POS order item(s). Refund or remove those orders first.`,
+      );
+    }
+
+    if (soldTicketCount > 0) {
+      throw new Error(
+        `Cannot delete "${ticketGroup.name}": ${soldTicketCount} sold ticket(s) exist for this group.`,
+      );
+    }
+
+    try {
+      return await prisma.ticketGroup.delete({
+        where: { id },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2003"
+      ) {
+        throw new Error(
+          `Cannot delete "${ticketGroup.name}": it is still referenced by other records.`,
+        );
+      }
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2025"
+      ) {
+        throw new Error("Ticket group not found");
+      }
+      throw error;
+    }
   },
 
   // Helper method to get parsed seating configuration

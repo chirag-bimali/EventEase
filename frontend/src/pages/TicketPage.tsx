@@ -113,9 +113,11 @@ export default function TicketPage() {
   return (
     <div>
       <Navbar />
-      <div className="p-6">
+      <div className="p-6 mx-auto max-w-5xl">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold">TICKETS</h1>
+          <h1 className="text-2xl font-semibold uppercase tracking-wide text-gray-800">
+            TICKETS
+          </h1>
           <p className="text-gray-600">
             View and manage all tickets in the system.
           </p>
@@ -139,7 +141,7 @@ export default function TicketPage() {
             value={filters.eventId || ""}
             onChange={(e) =>
               handleEventFilter(
-                e.target.value ? Number(e.target.value) : undefined
+                e.target.value ? Number(e.target.value) : undefined,
               )
             }
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -258,7 +260,7 @@ export default function TicketPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
-                            ticket.status
+                            ticket.status,
                           )}`}
                         >
                           {ticket.status}

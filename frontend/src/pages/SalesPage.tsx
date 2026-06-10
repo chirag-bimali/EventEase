@@ -87,7 +87,7 @@ export default function SalesPage() {
 
   const handleDateFilter = (
     startDate: string | undefined,
-    endDate: string | undefined
+    endDate: string | undefined,
   ) => {
     setFilters((prev) => ({ ...prev, startDate, endDate, page: 1 }));
   };
@@ -118,7 +118,7 @@ export default function SalesPage() {
   const handleRefundOrder = async (orderId: number) => {
     if (
       !confirm(
-        "Are you sure you want to refund this order? This will mark all tickets as available."
+        "Are you sure you want to refund this order? This will mark all tickets as available.",
       )
     )
       return;
@@ -172,9 +172,11 @@ export default function SalesPage() {
   return (
     <div>
       <Navbar />
-      <div className="p-6">
+      <div className="p-6 max-w-5xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold">SALES</h1>
+          <h1 className="text-2xl font-semibold uppercase tracking-wide text-gray-800">
+            SALES
+          </h1>
           <p className="text-gray-600">
             View and manage all sales orders in the system.
           </p>
@@ -209,7 +211,7 @@ export default function SalesPage() {
         {/* Filters */}
         <div className="mb-6 flex flex-wrap gap-4">
           {/* Search Bar */}
-          <div className="flex-1 min-w-50">
+          <div className="flex-1 min-w-40">
             <input
               type="text"
               placeholder="Search by order number, buyer name..."
@@ -224,10 +226,10 @@ export default function SalesPage() {
             value={filters.eventId || ""}
             onChange={(e) =>
               handleEventFilter(
-                e.target.value ? Number(e.target.value) : undefined
+                e.target.value ? Number(e.target.value) : undefined,
               )
             }
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-40"
           >
             <option value="">ALL EVENTS</option>
             {events.map((event) => (
@@ -345,10 +347,13 @@ export default function SalesPage() {
 
                   return (
                     <tr key={order.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-xs font-medium text-gray-900">
                         {order.orderNumber}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td
+                        title={o.event?.name}
+                        className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-12 w-full overflow-hidden text-ellipsis"
+                      >
                         {o.event?.name || "N/A"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -366,7 +371,7 @@ export default function SalesPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPaymentStatusColor(
-                            order.paymentStatus
+                            order.paymentStatus,
                           )}`}
                         >
                           {order.paymentStatus}
@@ -452,8 +457,8 @@ export default function SalesPage() {
                     currentPage === page
                       ? "bg-blue-500 text-white border-blue-500"
                       : typeof page === "string"
-                      ? "border-gray-300 text-gray-500 cursor-default"
-                      : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                        ? "border-gray-300 text-gray-500 cursor-default"
+                        : "border-gray-300 text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   {page}

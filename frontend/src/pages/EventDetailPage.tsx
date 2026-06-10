@@ -87,7 +87,7 @@ export const EventDetailPage = () => {
         await deleteTicketGroup(ticketGroupId);
       } catch (err) {
         console.error("Failed to delete ticket group:", err);
-        alert("Failed to delete ticket group");
+        // Error message is shown in ticketGroupsError banner
       }
     }
   };
@@ -103,8 +103,6 @@ export const EventDetailPage = () => {
       } else {
         await createTicketGroup(data as CreateTicketGroupDTO);
       }
-
-
     } catch (err) {
       alert("Failed to submit ticket group");
       throw err;
@@ -160,12 +158,12 @@ export const EventDetailPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="container mx-auto max-w-5xl px-4 py-8">
+        <div className="grid grid-cols-6 lg:grid-cols-6 gap-8">
           {/* Left side - Event Details */}
-          <div>
+          <div className="col-span-4">
             <div className="flex items-center justify-between mb-4 w-full overflow-hidden gap-12">
-              <h1 className="text-lg font-bold text-gray-900 text-ellipsis overflow-hidden w-full text-nowrap">
+              <h1 className="text-2xl font-semibold uppercase tracking-wide text-gray-800">
                 {event.name}
               </h1>
               {isAdmin && (
@@ -230,7 +228,7 @@ export const EventDetailPage = () => {
           </div>
 
           {/* Right side - Ticket Groups */}
-          <div>
+          <div className="col-span-2">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold text-gray-900">
                 TICKET GROUP

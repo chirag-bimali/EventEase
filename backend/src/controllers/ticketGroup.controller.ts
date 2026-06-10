@@ -104,7 +104,18 @@ export const deleteTicketGroup = async (
 
     await ticketGroupService.ticketGroupService.deleteTicketGroup(id);
     return res.status(204).send();
-  } catch (error) {
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Failed to delete ticket group";
+
+    if (message.includes("not found")) {
+      return res.status(404).json({ message });
+    }
+
+    if (message.includes("Cannot delete")) {
+      return res.status(409).json({ message });
+    }
+
     next(error);
   }
 };

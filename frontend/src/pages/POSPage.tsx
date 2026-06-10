@@ -122,20 +122,36 @@ export const POSPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      
+
       <div className="max-w-5xl mx-auto p-6">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
             <div className="bg-purple-100 p-3 rounded-lg">
-              <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <rect x="2" y="5" width="20" height="14" rx="2" strokeWidth="2" />
+              <svg
+                className="w-8 h-8 text-purple-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <rect
+                  x="2"
+                  y="5"
+                  width="20"
+                  height="14"
+                  rx="2"
+                  strokeWidth="2"
+                />
                 <path d="M2 10h20" strokeWidth="2" />
               </svg>
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">POINT OF SALE</h1>
-              <p className="text-gray-600">Process ticket sales and generate instant QR codes.</p>
+              <h1 className="text-2xl font-semibold uppercase tracking-wide text-gray-800">
+                POINT OF SALE
+              </h1>
+              <p className="text-gray-600">
+                Process ticket sales and generate instant QR codes.
+              </p>
             </div>
           </div>
         </div>
@@ -158,8 +174,8 @@ export const POSPage = () => {
                 step === "ticketing"
                   ? "bg-purple-100 text-purple-700"
                   : step === "payment"
-                  ? "text-gray-500 hover:bg-gray-100"
-                  : "text-gray-300 cursor-not-allowed"
+                    ? "text-gray-500 hover:bg-gray-100"
+                    : "text-gray-300 cursor-not-allowed"
               }`}
               disabled={!selectedEvent}
             >
@@ -179,9 +195,7 @@ export const POSPage = () => {
         )}
 
         {/* Step Content */}
-        {step === "event" && (
-          <EventSelector onSelect={handleEventSelect} />
-        )}
+        {step === "event" && <EventSelector onSelect={handleEventSelect} />}
 
         {step === "ticketing" && selectedEvent && (
           <TicketingStep
@@ -202,10 +216,7 @@ export const POSPage = () => {
         )}
 
         {step === "receipt" && completedOrder && (
-          <TicketReceipt
-            order={completedOrder}
-            onStartNew={handleStartNew}
-          />
+          <TicketReceipt order={completedOrder} onStartNew={handleStartNew} />
         )}
       </div>
     </div>
