@@ -3,7 +3,7 @@ import type { Role } from "./role.types";
 
 export interface User {
   id: number;
-  username: string;
+  email: string;
   role?: Role;
 }
 
@@ -13,8 +13,8 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string, roleId: number) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, roleId: number) => Promise<void>;
   logout: () => void;
 }
 
@@ -30,4 +30,3 @@ export interface RegisterResponse {
   message: string;
   userId: number;
 }
-

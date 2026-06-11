@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const { login, error, isLoading } = useAuth();
@@ -11,7 +11,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await login(username, password);
+    await login(email, password);
     navigate("/dashboard");
   };
 
@@ -33,17 +33,17 @@ export default function LoginPage() {
           <div className="mb-4">
             <label
               className="block text-gray-600 text-xs font-medium mb-2 uppercase"
-              htmlFor="username"
+              htmlFor="email"
             >
-              Username
+              Email
             </label>
             <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 border-b-2 border-gray-300 focus:border-purple-400 outline-none transition-colors"
-              placeholder="Enter your username"
+              placeholder="Enter your email"
               required
             />
           </div>

@@ -33,10 +33,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     restoreSession();
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      await authService.login(username, password);
+      await authService.login(email, password);
       const currentUser = authService.getCurrentUser();
       if (currentUser) {
         setUser(currentUser);
@@ -50,15 +50,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const register = async (
-    username: string,
+    email: string,
     password: string,
     roleId: number,
   ) => {
     try {
       setIsLoading(true);
-      await authService.register(username, password, roleId);
+      await authService.register(email, password, roleId);
       // Optionally auto-login after registration
-      await login(username, password);
+      await login(email, password);
     } catch (error) {
       setError(error instanceof Error ? error.message : "Registration failed");
       throw error;

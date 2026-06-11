@@ -20,12 +20,12 @@ export const register = async (
     if (!parsed.success) {
       return res
         .status(400)
-        .json({ message: "Username, password, and role are required" });
+        .json({ message: "Email, password, and role are required" });
     }
 
-    const existingUser = await prisma.user.findFirst({ where: { username: parsed.data.username } });
+    const existingUser = await prisma.user.findFirst({ where: { email: parsed.data.email } });
     if (existingUser) {
-      return res.status(409).json({ message: "Username already registered" });
+      return res.status(409).json({ message: "Email already registered" });
     }
 
     const roleExists = await prisma.role.findUnique({ where: { id: parsed.data.roleId } });
@@ -38,7 +38,7 @@ export const register = async (
     const created = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
-          username: parsed.data.username    ,
+          email: parsed.data.email,
           password: `${salt}:${hash}`,
         },
       });
@@ -72,10 +72,10 @@ export const login = async (
     if (!parsed.success) {
       return res
         .status(400)
-        .json({ message: "Username, password are required" });
+        .json({ message: "Email and password are required" });
     }
 
-    const user = await prisma.user.findFirst({ where: { username: parsed.data.username } });
+    const user = await prisma.user.findFirst({ where: { email: parsed.data.email } });
     if (!user || !user.password.includes(":")) {
       return res.status(401).json({ message: "Invalid credentials" });
     }

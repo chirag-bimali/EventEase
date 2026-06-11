@@ -16,7 +16,7 @@ datasource db {
 // Define your database models here
 model User {
   id        Int        @id @default(autoincrement())
-  username     String     @unique
+  email     String     @unique
   password  String
   roles     UserRole[]
   createdAt DateTime   @default(now())

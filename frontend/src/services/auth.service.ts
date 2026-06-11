@@ -41,12 +41,12 @@ function decodeToken(
 
 // Login
 export async function login(
-  username: string,
+  email: string,
   password: string,
 ): Promise<{ token: string }> {
   try {
     const response = await axiosInstance.post<LoginResponse>("/auth/login", {
-      username,
+      email,
       password,
     });
 
@@ -63,14 +63,14 @@ export async function login(
 
 // Register
 export async function register(
-  username: string,
+  email: string,
   password: string,
   roleId: number,
 ): Promise<{ message: string; userId: number }> {
   const response = await axiosInstance.post<RegisterResponse>(
     "/auth/register",
     {
-      username,
+      email,
       password,
       roleId,
     },
@@ -94,7 +94,7 @@ export function getCurrentUser(): User | null {
 
   return {
     id: payload.userId,
-    username: "", // We only have userId from token, would need API call to get username
+    email: "", // We only have userId from token, would need API call to get email
   };
 }
 

@@ -65,7 +65,7 @@ export const eventService = {
           },
         },
         createdBy: {
-          select: { id: true, username: true },
+          select: { id: true, email: true },
         },
       },
       orderBy: [
@@ -89,7 +89,7 @@ export const eventService = {
           },
         },
         createdBy: {
-          select: { id: true, username: true },
+          select: { id: true, email: true },
         },
       },
       orderBy: [
@@ -116,7 +116,7 @@ export const eventService = {
           },
         },
         createdBy: {
-          select: { id: true, username: true },
+          select: { id: true, email: true },
         },
       },
     });

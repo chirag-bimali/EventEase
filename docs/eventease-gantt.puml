@@ -1,0 +1,61 @@
+@startgantt
+title EventEase — 2.5-Month Development Plan
+printscale weekly
+project starts 2026-03-28 and ends 2026-06-11
+
+' Derived from 175 commits (feature order & effort only — not commit dates)
+' Critical path: T1→T2→T4→T5→T8→T9→T11→T12→T14→T18→T19→T20
+
+-- Foundation --
+
+[T1 Architecture & monorepo scaffolding] starts 2026-03-28 and lasts 3 days
+[T2 Backend core (Express, Prisma, MySQL)] starts 2026-03-30 and lasts 7 days
+[T3 Frontend shell (Vite, React, routing)] starts 2026-03-31 and lasts 6 days
+[M1 Dev environment ready] happens 2026-04-06
+
+-- Authentication --
+
+[T4 Auth & RBAC (JWT API + login UI)] starts 2026-04-07 and lasts 9 days
+[M2 Authentication complete] happens 2026-04-15
+
+-- Events --
+
+[T5 Event domain model & REST API] starts 2026-04-13 and lasts 8 days
+[T6 Image upload (Multer) & static serving] starts 2026-04-18 and lasts 4 days
+[T7 Event UI (list, create, edit pages)] starts 2026-04-16 and lasts 8 days
+[M3 Event management MVP] happens 2026-04-23
+
+-- Ticketing --
+
+[T8 Ticket schemas & batch generator] starts 2026-04-21 and lasts 8 days
+[T9 Ticket group CRUD API & routes] starts 2026-04-24 and lasts 7 days
+[T10 Event detail & ticket group UI] starts 2026-04-26 and lasts 9 days
+[M4 Ticketing configured] happens 2026-05-04
+
+-- POS --
+
+[T11 POS schema & order migrations] starts 2026-04-29 and lasts 5 days
+[T12 POS backend (orders, seat holds, layout)] starts 2026-05-02 and lasts 11 days
+[T13 POS cart hooks & reservation state] starts 2026-05-08 and lasts 4 days
+[T14 POS UI (seat map, cart, payment, receipt)] starts 2026-05-10 and lasts 11 days
+[M5 POS checkout live] happens 2026-05-20
+
+-- Validation --
+
+[T15 QR token service & validation API] starts 2026-05-14 and lasts 8 days
+[T16 QR scanner & gate validator UI] starts 2026-05-19 and lasts 7 days
+[M6 Gate validation ready] happens 2026-05-25
+
+-- Operations --
+
+[T17 Sales & ticket admin dashboards] starts 2026-05-20 and lasts 7 days
+[M7 Admin dashboards] happens 2026-05-26
+
+-- Hardening --
+
+[T18 Cross-module integration & bug fixes] starts 2026-05-24 and lasts 8 days
+[T19 POS refactor & seat reservation redesign] starts 2026-05-28 and lasts 8 days
+[T20 UI polish, error handling & release prep] starts 2026-06-02 and lasts 8 days
+[M8 EventEase release] happens 2026-06-11
+
+@endgantt

@@ -342,7 +342,7 @@ export default function SalesPage() {
                 orders.map((order) => {
                   const o = order as PosOrder & {
                     event?: { name?: string };
-                    createdBy?: { username?: string };
+                    createdBy?: { email?: string };
                   };
 
                   return (

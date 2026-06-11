@@ -69,7 +69,7 @@ export const getTicketStatus = async (
       where: { id: decodedToken.ticketId },
       include: {
         ticketGroup: { include: { event: true } },
-        validator: { select: { username: true } },
+        validator: { select: { email: true } },
       },
     });
 
@@ -82,7 +82,7 @@ export const getTicketStatus = async (
       seatNumber: ticket.seatNumber,
       status: ticket.status,
       validatedAt: ticket.validatedAt,
-      validatedBy: ticket.validator?.username,
+      validatedBy: ticket.validator?.email,
       eventName: ticket.ticketGroup.event.name,
       groupName: ticket.ticketGroup.name,
     });

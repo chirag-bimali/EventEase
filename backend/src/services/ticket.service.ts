@@ -536,7 +536,7 @@ export const ticketService = {
     if (searchQuery) {
       where.OR = [
         { seatNumber: { contains: searchQuery } },
-        { purchasedBy: { username: { contains: searchQuery } } },
+        { purchasedBy: { email: { contains: searchQuery } } },
       ];
     }
 
@@ -552,7 +552,7 @@ export const ticketService = {
           purchasedBy: {
             select: {
               id: true,
-              username: true,
+              email: true,
             },
           },
         },

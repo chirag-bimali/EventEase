@@ -73,7 +73,7 @@ async function main() {
   const adminPassword = await hashPassword("admin123");
   const admin = await prisma.user.create({
     data: {
-      username: "admin",
+      email: "admin@eventease.com",
       password: `${adminPassword.salt}:${adminPassword.hash}`,
     },
   });
@@ -82,20 +82,20 @@ async function main() {
   const userPassword = await hashPassword("user123");
   const user1 = await prisma.user.create({
     data: {
-      username: "john_doe",
+      email: "john.doe@example.com",
       password: `${userPassword.salt}:${userPassword.hash}`,
     },
   });
-  console.log("✅ Created user: john_doe");
+  console.log("✅ Created user: john.doe@example.com");
 
   const user2Password = await hashPassword("user456");
   const user2 = await prisma.user.create({
     data: {
-      username: "jane_smith",
+      email: "jane.smith@example.com",
       password: `${user2Password.salt}:${user2Password.hash}`,
     },
   });
-  console.log("✅ Created user: jane_smith");
+  console.log("✅ Created user: jane.smith@example.com");
 
   // Assign roles to users
   await prisma.userRole.create({
@@ -112,7 +112,7 @@ async function main() {
       roleId: userRole.id,
     },
   });
-  console.log("✅ Assigned user role to john_doe");
+  console.log("✅ Assigned user role to john.doe@example.com");
 
   await prisma.userRole.create({
     data: {
@@ -126,7 +126,7 @@ async function main() {
       roleId: moderatorRole.id,
     },
   });
-  console.log("✅ Assigned user and moderator roles to jane_smith");
+  console.log("✅ Assigned user and moderator roles to jane.smith@example.com");
 
   console.log("✨ Database seeding completed successfully!");
 }

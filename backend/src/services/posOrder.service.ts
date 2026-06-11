@@ -213,7 +213,6 @@ export const posOrderService = {
           select: {
             id: true,
             email: true,
-            username: true,
           },
         },
       },
@@ -277,7 +276,7 @@ export const posOrderService = {
             select: { id: true, name: true }
           },
           createdBy: {
-            select: { id: true, username: true }
+            select: { id: true, email: true }
           },
           items: {
             include: {

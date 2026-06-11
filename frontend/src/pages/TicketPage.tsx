@@ -237,7 +237,7 @@ export default function TicketPage() {
                       name?: string;
                       price?: number;
                     } | null;
-                    purchasedBy?: { username?: string } | null;
+                    purchasedBy?: { email?: string } | null;
                   };
 
                   return (
@@ -252,7 +252,7 @@ export default function TicketPage() {
                         {t.ticketGroup?.name || "N/A"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {t.purchasedBy?.username || "-"}
+                        {t.purchasedBy?.email || "-"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {"$" + (Number(t.ticketGroup?.price) || 0).toFixed(2)}

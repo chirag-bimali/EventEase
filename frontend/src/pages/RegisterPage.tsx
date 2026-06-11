@@ -5,7 +5,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useRoles } from "../hooks/useRoles";
 
 export default function RegisterPage() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -22,11 +22,11 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      await register(username, password, Number(selectedRoleId));
+      await register(email, password, Number(selectedRoleId));
       // After successful registration, user is auto-logged in via AuthContext
       navigate("/dashboard");
     } catch {
-      setError("Registration failed. Username may already exist.");
+      setError("Registration failed. Email may already be registered.");
     } finally {
       setIsLoading(false);
     }
@@ -56,17 +56,17 @@ export default function RegisterPage() {
           <div className="mb-4">
             <label
               className="block text-gray-600 text-xs font-medium mb-2 uppercase"
-              htmlFor="username"
+              htmlFor="email"
             >
-              Username
+              Email
             </label>
             <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 border-b-2 border-gray-300 focus:border-purple-400 outline-none transition-colors"
-              placeholder="Sundye Eyee"
+              placeholder="you@example.com"
               required
             />
           </div>

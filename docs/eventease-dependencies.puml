@@ -1,0 +1,81 @@
+@startuml EventEase Task Dependencies
+title EventEase — Task Dependency Graph
+left to right direction
+skinparam nodesep 40
+skinparam ranksep 30
+
+rectangle "Foundation" as foundation #E8F4FC {
+  card T1 as "T1\nArchitecture"
+  card T2 as "T2\nBackend core"
+  card T3 as "T3\nFrontend shell"
+}
+
+rectangle "Authentication" as auth #F0E8FC {
+  card T4 as "T4\nAuth & RBAC"
+}
+
+rectangle "Events" as events #E8FCE8 {
+  card T5 as "T5\nEvent API"
+  card T6 as "T6\nImage upload"
+  card T7 as "T7\nEvent UI"
+}
+
+rectangle "Ticketing" as ticketing #FCF8E8 {
+  card T8 as "T8\nTicket generator"
+  card T9 as "T9\nTicket group API"
+  card T10 as "T10\nTicket group UI"
+}
+
+rectangle "POS" as pos #FCE8E8 {
+  card T11 as "T11\nPOS schema"
+  card T12 as "T12\nPOS backend"
+  card T13 as "T13\nCart hooks"
+  card T14 as "T14\nPOS UI"
+}
+
+rectangle "Validation" as validation #FCE8F8 {
+  card T15 as "T15\nQR API"
+  card T16 as "T16\nQR scanner UI"
+}
+
+rectangle "Operations" as ops #E8E8FC {
+  card T17 as "T17\nAdmin dashboards"
+}
+
+rectangle "Hardening" as hardening #F0F0F0 {
+  card T18 as "T18\nIntegration fixes"
+  card T19 as "T19\nPOS refactor"
+  card T20 as "T20\nRelease prep"
+}
+
+T1 --> T2
+T1 --> T3
+T2 --> T4
+T3 --> T4
+T4 --> T5
+T4 --> T7
+T5 --> T6
+T5 --> T8
+T8 --> T9
+T7 --> T10
+T9 --> T10
+T9 --> T11
+T11 --> T12
+T12 --> T13
+T12 --> T15
+T12 --> T17
+T10 --> T14
+T13 --> T14
+T15 --> T16
+T14 --> T18
+T16 --> T18
+T17 --> T18
+T18 --> T19
+T19 --> T20
+
+note right of T20
+  **M8 Release**
+  Jun 11, 2026
+end note
+
+@enduml
